@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+dist
+.env*.local
+.env
+.DS_Store
+.vercel
+
+# typescript / next generated
+next-env.d.ts
+*.tsbuildinfo
+
+# claude code local config
+.claude

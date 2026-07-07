@@ -1,0 +1,1 @@
+-- Add local test seed data here after auth/user creation is implemented.
