@@ -1,30 +1,18 @@
-# WishPop Next.js Rebuild
+# WishPop — Product App
 
-This is the restructured WishPop project using Next.js App Router.
+The WishPop product application (the app behind the waitlist). The
+marketing/waitlist landing page lives in a separate repo
+([wishpop](https://github.com/ttaiyegbusi/wishpop)).
 
-## What changed
+- **This repo** → the product app, deployed to `app.wishpop.online`.
+- **wishpop repo** → the landing page, deployed to the apex domain.
 
-The old static structure:
+## Routes
 
-```txt
-index.html
-css/styles.css
-js/main.js
-assets/
-fonts/
-```
-
-is now:
-
-```txt
-app/
-components/
-lib/
-actions/
-database/
-types/
-public/
-```
+- `/` — Home (your wishlists)
+- `/wishlists/new` — name a wishlist folder
+- `/wishlists/new/items` — add an item (image, title, price, link, notes)
+- `/wishlists/[id]` — wishlist view (fanned, swipeable item cards)
 
 ## Run locally
 
@@ -33,22 +21,10 @@ npm install
 npm run dev
 ```
 
-Open:
+Open http://localhost:3000
 
-```txt
-http://localhost:3000
-```
+## Notes
 
-## Waitlist setup
-
-1. Create a Supabase project.
-2. Run `database/schema.sql` in the Supabase SQL editor.
-3. Copy `.env.local.example` to `.env.local`.
-4. Add your Supabase URL, anon key, and service role key.
-5. Restart the dev server.
-
-The waitlist form will only show success after the email is saved in Supabase.
-
-## Deploy
-
-Push to GitHub, connect the repo to Vercel, then add the same environment variables in Vercel project settings.
+- Mobile-first. On desktop each screen renders as a centred phone frame.
+- State is currently client-side (localStorage) — no backend yet. Supabase
+  server actions and auth are the next step.
