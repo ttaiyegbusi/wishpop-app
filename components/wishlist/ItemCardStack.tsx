@@ -1,17 +1,17 @@
 'use client';
 
-import { useRef, useState } from 'react';
 import type { WishlistItem } from '@/components/product/WishlistStore';
 
-// Fanned, swipeable stack of item cards (image only, per the design).
-// Tap the front card or drag horizontally to bring the next item forward.
-export function ItemCardStack({ items }: { items: WishlistItem[] }) {
-  const [active, setActive] = useState(0);
-  const [drag, setDrag] = useState(0);
-  const startX = useRef<number | null>(null);
-  const count = items.length;
-
-  if (count === 0) {
+// Vertically-scrolling column of overlapping item cards in a loose,
+// hand-placed left/right scatter. Tap a card to open the item.
+export function ItemCardStack({
+  items,
+  onOpen,
+}: {
+  items: WishlistItem[];
+  onOpen: (item: WishlistItem) => void;
+}) {
+  if (items.length === 0) {
     return (
       <div className="stack-empty">
         <p>No items yet.</p>
@@ -19,70 +19,40 @@ export function ItemCardStack({ items }: { items: WishlistItem[] }) {
     );
   }
 
-  function advance(dir: number) {
-    setActive((a) => (a + dir + count) % count);
-  }
-
-  function onPointerDown(e: React.PointerEvent) {
-    startX.current = e.clientX;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  }
-  function onPointerMove(e: React.PointerEvent) {
-    if (startX.current === null) return;
-    setDrag(e.clientX - startX.current);
-  }
-  function onPointerUp() {
-    if (startX.current === null) return;
-    const dx = drag;
-    startX.current = null;
-    setDrag(0);
-    if (dx < -60) advance(1);
-    else if (dx > 60) advance(-1);
-  }
-
   return (
-    <div className="card-stack">
+    <div className="card-scatter">
       {items.map((item, i) => {
-        const rel = (i - active + count) % count;
-        const isFront = rel === 0;
-        const base = STACK_TRANSFORMS[Math.min(rel, STACK_TRANSFORMS.length - 1)];
-        const dragT = isFront ? ` translateX(${drag}px) rotate(${drag * 0.02}deg)` : '';
+        const s = SCATTER[i % SCATTER.length];
         return (
           <button
             key={item.id}
             type="button"
-            className={`stack-card ${isFront ? 'is-front' : ''}`}
+            className="scatter-card"
             style={{
-              zIndex: count - rel,
-              opacity: rel > 2 ? 0 : base.opacity,
-              transform: base.t + dragT,
+              zIndex: i + 1,
+              marginTop: i === 0 ? 0 : -s.overlap,
+              marginLeft: s.side === 'l' ? s.pad : 'auto',
+              marginRight: s.side === 'r' ? s.pad : 'auto',
+              transform: `rotate(${s.rot}deg)`,
               backgroundImage: item.imageDataUrl ? `url(${item.imageDataUrl})` : undefined,
-              transition: startX.current !== null ? 'none' : undefined,
             }}
-            aria-label={`${item.title}${count > 1 ? `, item ${i + 1} of ${count}` : ''}`}
-            onPointerDown={isFront ? onPointerDown : undefined}
-            onPointerMove={isFront ? onPointerMove : undefined}
-            onPointerUp={isFront ? onPointerUp : undefined}
-            onClick={() => {
-              if (Math.abs(drag) < 6 && count > 1) advance(1);
-            }}
+            aria-label={`Open ${item.title}`}
+            onClick={() => onOpen(item)}
           />
         );
       })}
-
-      {count > 1 ? (
-        <div className="stack-dots" aria-hidden="true">
-          {items.map((item, i) => (
-            <span key={item.id} className={`stack-dot ${i === active ? 'is-active' : ''}`} />
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }
 
-const STACK_TRANSFORMS = [
-  { t: 'rotate(7deg) translate(10px, 6px) scale(1)', opacity: 1 },
-  { t: 'rotate(-5deg) translate(-18px, -8px) scale(0.96)', opacity: 1 },
-  { t: 'rotate(3deg) translate(8px, -16px) scale(0.92)', opacity: 0.65 },
-];
+// Loose, hand-placed scatter pattern. Cycles every 6 cards so longer lists
+// keep the same rhythm without an obvious repeat. `overlap` is how far a card
+// pulls up over the previous one; `pad` is its inset from the aligned edge.
+const SCATTER = [
+  { side: 'l', pad: 44, overlap: 0, rot: -2 },
+  { side: 'r', pad: 50, overlap: 96, rot: 2.5 },
+  { side: 'l', pad: 60, overlap: 104, rot: -1.5 },
+  { side: 'r', pad: 44, overlap: 92, rot: 2 },
+  { side: 'l', pad: 40, overlap: 100, rot: -2.5 },
+  { side: 'r', pad: 56, overlap: 94, rot: 1.5 },
+] as const;

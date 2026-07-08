@@ -867,7 +867,7 @@ code {
 /* live text overlaid where the baked SVG text used to sit */
 .folder-preview-text {
   position: absolute;
-  left: 10.4%;   /* ~19 / 182 */
+  left: 18%;     /* inset from the pocket's left wall (edge ~9%) */
   top: 63%;      /* baseline of the title area */
   right: 8%;
   display: flex;
@@ -878,7 +878,7 @@ code {
   font-family: 'Nunito Sans', Inter, system-ui, sans-serif;
   font-size: 15px;
   font-weight: 800;
-  color: #FFFFFF;
+  color: #3A3A3A;
   max-width: 120px;
   white-space: nowrap;
   overflow: hidden;
@@ -887,13 +887,13 @@ code {
 }
 
 .folder-preview-title.is-placeholder {
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(58, 58, 58, 0.55);
 }
 
 .folder-preview-count {
   font-size: 12px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(58, 58, 58, 0.65);
   margin-top: 6px;
 }
 
@@ -1090,65 +1090,139 @@ code {
 }
 .round-btn.dark { background: #171717; color: #FFFFFF; }
 
-.wishlist-view-title {
+.wishlist-view-heading {
   padding: 14px 24px 0;
+}
+.wishlist-view-title {
   font-family: 'Nunito Sans', Inter, system-ui, sans-serif;
   font-size: 28px;
   font-weight: 900;
   letter-spacing: -0.03em;
   color: #171717;
 }
+.wishlist-view-subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #9A9A9A;
+}
 
+/* vertically-scrolling column of overlapping, scattered item cards */
 .wishlist-view-stack {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.card-scatter {
+  display: flex;
+  flex-direction: column;
+  padding: 18px 0 40px;
+}
+
+.scatter-card {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  width: 158px;
+  height: 196px;
+  border: none;
+  padding: 0;
+  border-radius: 20px;
+  background: #E9E1D4;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.16);
+  cursor: pointer;
+  transition: transform 180ms ease;
+}
+.scatter-card:active { transform: scale(0.98) rotate(0deg) !important; }
+
+.stack-empty {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.card-stack {
-  position: relative;
-  width: 180px;
-  height: 240px;
-}
-
-.stack-card {
-  position: absolute;
-  inset: 0;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 22px;
-  background: #E9E9E9;
-  background-size: cover;
-  background-position: center;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.10);
-  cursor: pointer;
-  padding: 0;
-  transform-origin: 50% 90%;
-  transition: transform 260ms cubic-bezier(0.22, 0.85, 0.3, 1), opacity 200ms ease;
-}
-.stack-card.is-front { cursor: grab; }
-.stack-card.is-front:active { cursor: grabbing; }
-
-.stack-dots {
-  position: absolute;
-  left: 50%;
-  bottom: -26px;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 6px;
-}
-.stack-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #D2D2D2;
-  transition: background 150ms ease;
-}
-.stack-dot.is-active { background: #171717; }
-
-.stack-empty {
   color: #9A9A9A;
   font-size: 15px;
+}
+
+/* tap-to-open item detail overlay */
+.item-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(20, 20, 20, 0.44);
+  backdrop-filter: blur(2px);
+  animation: overlay-fade 160ms ease;
+}
+@keyframes overlay-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.item-overlay-card {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  background: #FFFFFF;
+  border-radius: 26px;
+  overflow: hidden;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.28);
+  animation: overlay-pop 200ms cubic-bezier(0.22, 0.85, 0.3, 1);
+}
+@keyframes overlay-pop {
+  from { transform: scale(0.94); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.item-overlay-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+}
+.item-overlay-image {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  background: #E9E1D4;
+  background-size: cover;
+  background-position: center;
+}
+.item-overlay-body {
+  padding: 18px 20px 22px;
+}
+.item-overlay-title {
+  font-family: 'Nunito Sans', Inter, system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: #171717;
+}
+.item-overlay-price {
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #171717;
+}
+.item-overlay-notes {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #6B6B6B;
+}
+.item-overlay-link {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: #171717;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
 }
 
 .wishlist-view-bar {
