@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { ImagePlus } from 'lucide-react';
 import { useWishlists } from '@/components/product/WishlistStore';
 import { fileToDownscaledDataUrl } from '@/lib/product/image';
 
@@ -113,7 +114,7 @@ export function AddItemScreen() {
           style={image ? { backgroundImage: `url(${image})` } : undefined}
         >
           <span className="item-image-badge" aria-hidden="true">
-            <PhotoIcon />
+            <ImagePlus size={16} strokeWidth={1.8} color="#171717" />
           </span>
         </button>
         <input
@@ -170,16 +171,5 @@ export function AddItemScreen() {
         </div>
       </form>
     </main>
-  );
-}
-
-function PhotoIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <rect x="2.5" y="4" width="12" height="10" rx="2.2" stroke="#171717" strokeWidth="1.4" />
-      <circle cx="6" cy="7.5" r="1.1" fill="#171717" />
-      <path d="M4 12.5l3-2.5 3 2.2 2-1.6 2.5 2" stroke="#171717" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M16 4.5v4M14 6.5h4" stroke="#171717" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
   );
 }
