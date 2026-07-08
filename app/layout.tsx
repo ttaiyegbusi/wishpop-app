@@ -1,7 +1,18 @@
 import type { Metadata } from 'next';
+import localFont from 'next/font/local';
 import { Analytics } from '@vercel/analytics/next';
 import { WishlistProvider } from '@/components/product/WishlistStore';
 import './globals.css';
+
+// Self-hosted so the font ships from our own domain (no render-blocking
+// third-party request to Google Fonts). Variable weight axis covers 400-800.
+const baloo = localFont({
+  src: './fonts/Baloo2-VariableFont_wght.ttf',
+  variable: '--font-baloo',
+  weight: '400 800',
+  display: 'swap',
+  fallback: ['system-ui', 'sans-serif'],
+});
 
 export const metadata: Metadata = {
   title: 'WishPop',
@@ -11,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={baloo.variable}>
       <body>
         {/* the whole app is the product: store + mobile-first phone frame */}
         <WishlistProvider>
