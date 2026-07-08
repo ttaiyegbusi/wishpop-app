@@ -35,6 +35,8 @@ type WishlistStore = {
   wishlists: DraftWishlist[];
   createWishlist: (input: { title: string; color?: ThemeColorId }) => DraftWishlist;
   addItem: (wishlistId: string, item: Omit<WishlistItem, 'id'>) => void;
+  renameWishlist: (id: string, title: string) => void;
+  deleteWishlist: (id: string) => void;
   getWishlist: (id: string) => DraftWishlist | undefined;
 };
 
@@ -97,6 +99,18 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const renameWishlist: WishlistStore['renameWishlist'] = useCallback((id, title) => {
+    const next = title.trim();
+    if (!next) return;
+    setWishlists((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, title: next } : w)),
+    );
+  }, []);
+
+  const deleteWishlist: WishlistStore['deleteWishlist'] = useCallback((id) => {
+    setWishlists((prev) => prev.filter((w) => w.id !== id));
+  }, []);
+
   const getWishlist = useCallback(
     (id: string) => wishlists.find((w) => w.id === id),
     [wishlists],
@@ -104,7 +118,15 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ ready, wishlists, createWishlist, addItem, getWishlist }}
+      value={{
+        ready,
+        wishlists,
+        createWishlist,
+        addItem,
+        renameWishlist,
+        deleteWishlist,
+        getWishlist,
+      }}
     >
       {children}
     </Ctx.Provider>

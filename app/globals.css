@@ -1067,7 +1067,117 @@ code {
 .wishlist-view {
   background: #F7F7F7;
   font-family: Inter, -apple-system, system-ui, sans-serif;
+  height: 100dvh;
+  overflow: hidden;
 }
+
+.wishlist-view-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.folder-menu-wrap {
+  position: relative;
+}
+.folder-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  min-width: 184px;
+  padding: 6px;
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.16);
+  display: flex;
+  flex-direction: column;
+  animation: overlay-pop 140ms ease;
+}
+.folder-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 11px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2A2A2A;
+  text-align: left;
+  cursor: pointer;
+}
+.folder-menu-item:hover { background: #F3F3F3; }
+.folder-menu-item.is-danger { color: #E5484D; }
+
+.folder-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: rgba(20, 20, 20, 0.44);
+  backdrop-filter: blur(2px);
+  animation: overlay-fade 160ms ease;
+}
+.folder-modal-card {
+  width: 100%;
+  max-width: 320px;
+  padding: 22px 22px 18px;
+  background: #FFFFFF;
+  border-radius: 22px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.28);
+  animation: overlay-pop 180ms cubic-bezier(0.22, 0.85, 0.3, 1);
+}
+.folder-modal-title {
+  font-family: 'Nunito Sans', Inter, system-ui, sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+  color: #171717;
+}
+.folder-modal-text {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #6B6B6B;
+}
+.folder-modal-input {
+  margin-top: 16px;
+  width: 100%;
+  padding: 13px 14px;
+  border: 1.5px solid #E4E4E4;
+  border-radius: 12px;
+  font-size: 15px;
+  color: #171717;
+  background: #FAFAFA;
+}
+.folder-modal-input:focus {
+  outline: none;
+  border-color: #171717;
+  background: #FFFFFF;
+}
+.folder-modal-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.folder-modal-btn {
+  padding: 11px 20px;
+  border: none;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.folder-modal-btn.ghost { background: #F0F0F0; color: #2A2A2A; }
+.folder-modal-btn.primary { background: #171717; color: #FFFFFF; }
+.folder-modal-btn.primary:disabled { opacity: 0.4; cursor: default; }
+.folder-modal-btn.danger { background: #E5484D; color: #FFFFFF; }
 
 .round-btn {
   width: 40px;
@@ -1092,6 +1202,7 @@ code {
 
 .wishlist-view-heading {
   padding: 14px 24px 0;
+  text-align: center;
 }
 .wishlist-view-title {
   font-family: 'Nunito Sans', Inter, system-ui, sans-serif;
@@ -1137,7 +1248,7 @@ code {
   cursor: pointer;
   transition: transform 180ms ease;
 }
-.scatter-card:active { transform: scale(0.98) rotate(0deg) !important; }
+.scatter-card:active { transform: scale(0.98); }
 
 .stack-empty {
   flex: 1;
@@ -1225,13 +1336,15 @@ code {
   text-decoration: none;
 }
 
+/* pinned action bar; cards scroll behind it */
 .wishlist-view-bar {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px calc(24px + env(safe-area-inset-bottom));
 }
-.share-btn {
+.done-btn {
   background: #FFFFFF;
   color: #171717;
   border: none;
@@ -1243,7 +1356,7 @@ code {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
   transition: transform 150ms ease;
 }
-.share-btn:active { transform: scale(0.98); }
+.done-btn:active { transform: scale(0.98); }
 
 .wishlist-toast {
   position: fixed;
