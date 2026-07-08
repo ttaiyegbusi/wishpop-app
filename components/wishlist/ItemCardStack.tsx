@@ -27,7 +27,7 @@ export function ItemCardStack({
           <button
             key={item.id}
             type="button"
-            className="scatter-card"
+            className={`scatter-card ${item.reservation ? 'is-reserved' : ''}`}
             style={{
               zIndex: i + 1,
               marginTop: i === 0 ? 0 : -CARD_OVERLAP,
@@ -43,6 +43,7 @@ export function ItemCardStack({
               className="scatter-card-photo"
               style={item.imageDataUrl ? { backgroundImage: `url(${item.imageDataUrl})` } : undefined}
             />
+            {item.reservation ? <span className="scatter-card-reserved">Reserved</span> : null}
           </button>
         );
       })}

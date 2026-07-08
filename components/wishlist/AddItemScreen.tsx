@@ -115,7 +115,7 @@ export function AddItemScreen() {
       localStorage.removeItem(DRAFT_TITLE_KEY);
     }
 
-    addItem(wishlistId, {
+    const newItemId = addItem(wishlistId, {
       title: title.trim(),
       imageDataUrl: image,
       price: price.trim(),
@@ -124,6 +124,9 @@ export function AddItemScreen() {
       notes: notes.trim(),
     });
 
+    // Signal the "New Item added" toast to the wishlist view without touching
+    // the URL (manual history edits desync the App Router).
+    sessionStorage.setItem('wishpop:justAddedItem', newItemId);
     router.push(`/wishlists/${wishlistId}`);
   }
 

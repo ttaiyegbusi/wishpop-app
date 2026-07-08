@@ -7,6 +7,7 @@ import { Share, Pencil, Trash2, Share2 } from 'lucide-react';
 import { useWishlists } from '@/components/product/WishlistStore';
 import { ItemCardStack } from '@/components/wishlist/ItemCardStack';
 import { ItemStoryViewer } from '@/components/wishlist/ItemStoryViewer';
+import { Toast } from '@/components/ui/Toast';
 
 export default function WishlistDetailPage({
   params,
@@ -22,6 +23,18 @@ export default function WishlistDetailPage({
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [addedItemId, setAddedItemId] = useState<string | null>(null);
+
+  // The add-item flow leaves the new item id in sessionStorage; show the
+  // "New Item added" toast once. Removal is deferred so React's dev double-
+  // mount (fresh instance) still reads the value before it's cleared.
+  useEffect(() => {
+    const added = sessionStorage.getItem('wishpop:justAddedItem');
+    if (!added) return;
+    setAddedItemId(added);
+    const t = setTimeout(() => sessionStorage.removeItem('wishpop:justAddedItem'), 400);
+    return () => clearTimeout(t);
+  }, []);
 
   const items = wishlist?.items ?? [];
   const subtitle = wishlist
@@ -122,6 +135,19 @@ export default function WishlistDetailPage({
           {wishlist ? <p className="wishlist-view-subtitle">{subtitle}</p> : null}
         </div>
       </div>
+
+      {addedItemId ? (
+        <Toast
+          message="New Item added"
+          actionLabel="Edit"
+          onAction={() => {
+            const id = addedItemId;
+            setAddedItemId(null);
+            router.push(`/wishlists/new/items?wishlist=${wishlistId}&item=${id}`);
+          }}
+          onDismiss={() => setAddedItemId(null)}
+        />
+      ) : null}
 
       {openIndex !== null ? (
         <ItemStoryViewer

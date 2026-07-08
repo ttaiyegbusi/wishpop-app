@@ -2,19 +2,24 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useWishlists } from '@/components/product/WishlistStore';
+import { Pencil, Trash2, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useWishlists, type WishlistItem } from '@/components/product/WishlistStore';
 
 // Full-image, swipeable "stories" viewer for a wishlist's items. Opens on the
-// tapped item and lets the user page through all of them, edit, or delete.
+// tapped item and lets the user page through all of them. In 'owner' mode the
+// actions are edit/delete; in 'reserve' mode they are Reserve + close.
 export function ItemStoryViewer({
   wishlistId,
   startIndex,
   onClose,
+  mode = 'owner',
+  onReserve,
 }: {
   wishlistId: string;
   startIndex: number;
   onClose: () => void;
+  mode?: 'owner' | 'reserve';
+  onReserve?: (item: WishlistItem) => void;
 }) {
   const router = useRouter();
   const { getWishlist, deleteItem } = useWishlists();
@@ -110,26 +115,47 @@ export function ItemStoryViewer({
           </div>
         </div>
 
-        <div className="item-story-actions">
-          <button
-            type="button"
-            className="item-story-action"
-            aria-label="Edit item"
-            onClick={() =>
-              router.push(`/wishlists/new/items?wishlist=${wishlistId}&item=${item.id}`)
-            }
-          >
-            <Pencil size={18} strokeWidth={1.9} />
-          </button>
-          <button
-            type="button"
-            className="item-story-action"
-            aria-label="Delete item"
-            onClick={() => setConfirmDelete(true)}
-          >
-            <Trash2 size={18} strokeWidth={1.9} />
-          </button>
-        </div>
+        {mode === 'reserve' ? (
+          <div className="item-story-actions">
+            <button
+              type="button"
+              className="item-story-reserve"
+              disabled={!!item.reservation}
+              onClick={() => onReserve?.(item)}
+            >
+              {item.reservation ? 'Reserved' : 'Reserve'}
+            </button>
+            <button
+              type="button"
+              className="item-story-action"
+              aria-label="Close"
+              onClick={onClose}
+            >
+              <X size={18} strokeWidth={2} />
+            </button>
+          </div>
+        ) : (
+          <div className="item-story-actions">
+            <button
+              type="button"
+              className="item-story-action"
+              aria-label="Edit item"
+              onClick={() =>
+                router.push(`/wishlists/new/items?wishlist=${wishlistId}&item=${item.id}`)
+              }
+            >
+              <Pencil size={18} strokeWidth={1.9} />
+            </button>
+            <button
+              type="button"
+              className="item-story-action"
+              aria-label="Delete item"
+              onClick={() => setConfirmDelete(true)}
+            >
+              <Trash2 size={18} strokeWidth={1.9} />
+            </button>
+          </div>
+        )}
       </div>
 
       {confirmDelete ? (

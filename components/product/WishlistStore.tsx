@@ -13,6 +13,11 @@ import { THEME_COLORS, type ThemeColorId } from '@/lib/product/colors';
 // UI-first client store. Persists to localStorage so the create flow feels
 // real without a backend. Swap for Supabase-backed server actions later.
 
+export type Reservation = {
+  email: string;
+  createdAt: number;
+};
+
 export type WishlistItem = {
   id: string;
   title: string;
@@ -21,6 +26,7 @@ export type WishlistItem = {
   currency: string;
   link: string;
   notes: string;
+  reservation?: Reservation | null;
 };
 
 export type DraftWishlist = {
@@ -35,13 +41,15 @@ type WishlistStore = {
   ready: boolean;
   wishlists: DraftWishlist[];
   createWishlist: (input: { title: string; color?: ThemeColorId }) => DraftWishlist;
-  addItem: (wishlistId: string, item: Omit<WishlistItem, 'id'>) => void;
+  addItem: (wishlistId: string, item: Omit<WishlistItem, 'id'>) => string;
   updateItem: (
     wishlistId: string,
     itemId: string,
     patch: Partial<Omit<WishlistItem, 'id'>>,
   ) => void;
   deleteItem: (wishlistId: string, itemId: string) => void;
+  reserveItem: (wishlistId: string, itemId: string, email: string) => void;
+  unreserveItem: (wishlistId: string, itemId: string) => void;
   renameWishlist: (id: string, title: string) => void;
   deleteWishlist: (id: string) => void;
   getWishlist: (id: string) => DraftWishlist | undefined;
@@ -97,13 +105,13 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   );
 
   const addItem: WishlistStore['addItem'] = useCallback((wishlistId, item) => {
+    const id = newId();
     setWishlists((prev) =>
       prev.map((w) =>
-        w.id === wishlistId
-          ? { ...w, items: [...w.items, { ...item, id: newId() }] }
-          : w,
+        w.id === wishlistId ? { ...w, items: [...w.items, { ...item, id }] } : w,
       ),
     );
+    return id;
   }, []);
 
   const updateItem: WishlistStore['updateItem'] = useCallback((wishlistId, itemId, patch) => {
@@ -120,6 +128,36 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     setWishlists((prev) =>
       prev.map((w) =>
         w.id === wishlistId ? { ...w, items: w.items.filter((it) => it.id !== itemId) } : w,
+      ),
+    );
+  }, []);
+
+  const reserveItem: WishlistStore['reserveItem'] = useCallback((wishlistId, itemId, email) => {
+    setWishlists((prev) =>
+      prev.map((w) =>
+        w.id === wishlistId
+          ? {
+              ...w,
+              items: w.items.map((it) =>
+                it.id === itemId
+                  ? { ...it, reservation: { email: email.trim(), createdAt: Date.now() } }
+                  : it,
+              ),
+            }
+          : w,
+      ),
+    );
+  }, []);
+
+  const unreserveItem: WishlistStore['unreserveItem'] = useCallback((wishlistId, itemId) => {
+    setWishlists((prev) =>
+      prev.map((w) =>
+        w.id === wishlistId
+          ? {
+              ...w,
+              items: w.items.map((it) => (it.id === itemId ? { ...it, reservation: null } : it)),
+            }
+          : w,
       ),
     );
   }, []);
@@ -150,6 +188,8 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         addItem,
         updateItem,
         deleteItem,
+        reserveItem,
+        unreserveItem,
         renameWishlist,
         deleteWishlist,
         getWishlist,
