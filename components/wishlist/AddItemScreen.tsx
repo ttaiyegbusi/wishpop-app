@@ -12,11 +12,15 @@ const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR', 'CAD'];
 export function AddItemScreen() {
   const router = useRouter();
   const params = useSearchParams();
-  const { ready, getWishlist, createWishlist, addItem } = useWishlists();
+  const { ready, getWishlist, createWishlist, addItem, updateItem } = useWishlists();
 
   // Adding to an existing wishlist (?wishlist=id) or starting one from the draft.
   const existingId = params.get('wishlist');
   const existing = existingId ? getWishlist(existingId) : undefined;
+
+  // Editing an existing item (?item=id): pre-fill the form and save in place.
+  const editItemId = params.get('item');
+  const editItem = editItemId ? existing?.items.find((it) => it.id === editItemId) : undefined;
 
   const [headerTitle, setHeaderTitle] = useState('');
   const [image, setImage] = useState<string | null>(null);
@@ -28,6 +32,7 @@ export function AddItemScreen() {
   const [keyboardInset, setKeyboardInset] = useState(0);
 
   const fileRef = useRef<HTMLInputElement>(null);
+  const prefilled = useRef(false);
 
   useEffect(() => {
     if (existing) {
@@ -36,6 +41,18 @@ export function AddItemScreen() {
       setHeaderTitle(localStorage.getItem(DRAFT_TITLE_KEY) ?? 'New wishlist');
     }
   }, [existing]);
+
+  // Pre-fill the form once when editing an existing item.
+  useEffect(() => {
+    if (!editItem || prefilled.current) return;
+    prefilled.current = true;
+    setImage(editItem.imageDataUrl);
+    setTitle(editItem.title);
+    setPrice(editItem.price);
+    setCurrency(editItem.currency ?? 'NGN');
+    setLink(editItem.link);
+    setNotes(editItem.notes);
+  }, [editItem]);
 
   // Keep the Next CTA above the keyboard while it's open (see folder screen).
   useEffect(() => {
@@ -76,6 +93,20 @@ export function AddItemScreen() {
 
   function handleNext() {
     if (!isValid || !ready) return;
+
+    // Editing in place: save changes and return to the wishlist.
+    if (existing && editItem) {
+      updateItem(existing.id, editItem.id, {
+        title: title.trim(),
+        imageDataUrl: image,
+        price: price.trim(),
+        currency,
+        link: link.trim(),
+        notes: notes.trim(),
+      });
+      router.push(`/wishlists/${existing.id}`);
+      return;
+    }
 
     let wishlistId = existing?.id;
     if (!wishlistId) {
@@ -230,7 +261,7 @@ export function AddItemScreen() {
           disabled={!isValid}
           onClick={handleNext}
         >
-          Next
+          {editItem ? 'Save' : 'Next'}
         </button>
       </div>
     </main>

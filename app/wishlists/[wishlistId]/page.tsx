@@ -4,8 +4,9 @@ import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Share, Pencil, Trash2, Share2 } from 'lucide-react';
-import { useWishlists, type WishlistItem } from '@/components/product/WishlistStore';
+import { useWishlists } from '@/components/product/WishlistStore';
 import { ItemCardStack } from '@/components/wishlist/ItemCardStack';
+import { ItemStoryViewer } from '@/components/wishlist/ItemStoryViewer';
 
 export default function WishlistDetailPage({
   params,
@@ -17,7 +18,7 @@ export default function WishlistDetailPage({
   const { ready, getWishlist, renameWishlist, deleteWishlist } = useWishlists();
   const wishlist = getWishlist(wishlistId);
   const [toast, setToast] = useState('');
-  const [openItem, setOpenItem] = useState<WishlistItem | null>(null);
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -72,7 +73,7 @@ export default function WishlistDetailPage({
     <main className="wishlist-view">
       <div className="wishlist-scroll">
         <div className="wishlist-scroll-inner">
-          <ItemCardStack items={items} onOpen={setOpenItem} />
+          <ItemCardStack items={items} onOpen={setOpenIndex} />
         </div>
       </div>
 
@@ -122,8 +123,12 @@ export default function WishlistDetailPage({
         </div>
       </div>
 
-      {openItem ? (
-        <ItemDetailOverlay item={openItem} onClose={() => setOpenItem(null)} />
+      {openIndex !== null ? (
+        <ItemStoryViewer
+          wishlistId={wishlistId}
+          startIndex={openIndex}
+          onClose={() => setOpenIndex(null)}
+        />
       ) : null}
 
       {renaming ? (
@@ -288,55 +293,6 @@ function formatDate(ts: number) {
           : 'th';
   const month = d.toLocaleString('en-US', { month: 'short' });
   return `${day}${suffix} ${month}`;
-}
-
-function ItemDetailOverlay({
-  item,
-  onClose,
-}: {
-  item: WishlistItem;
-  onClose: () => void;
-}) {
-  return (
-    <div className="item-overlay" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="item-overlay-card" onClick={(e) => e.stopPropagation()}>
-        <button className="round-btn light item-overlay-close" aria-label="Close" onClick={onClose}>
-          <CloseIcon />
-        </button>
-        <div
-          className="item-overlay-image"
-          style={item.imageDataUrl ? { backgroundImage: `url(${item.imageDataUrl})` } : undefined}
-        />
-        <div className="item-overlay-body">
-          <h2 className="item-overlay-title">{item.title}</h2>
-          {item.price ? (
-            <p className="item-overlay-price">
-              {`${item.currency ?? ''} ${item.price}`.trim()}
-            </p>
-          ) : null}
-          {item.notes ? <p className="item-overlay-notes">{item.notes}</p> : null}
-          {item.link ? (
-            <a
-              className="item-overlay-link"
-              href={item.link}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              View item
-            </a>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-      <path d="M5 5l8 8M13 5l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
 }
 
 function BackIcon() {

@@ -36,6 +36,12 @@ type WishlistStore = {
   wishlists: DraftWishlist[];
   createWishlist: (input: { title: string; color?: ThemeColorId }) => DraftWishlist;
   addItem: (wishlistId: string, item: Omit<WishlistItem, 'id'>) => void;
+  updateItem: (
+    wishlistId: string,
+    itemId: string,
+    patch: Partial<Omit<WishlistItem, 'id'>>,
+  ) => void;
+  deleteItem: (wishlistId: string, itemId: string) => void;
   renameWishlist: (id: string, title: string) => void;
   deleteWishlist: (id: string) => void;
   getWishlist: (id: string) => DraftWishlist | undefined;
@@ -100,6 +106,24 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const updateItem: WishlistStore['updateItem'] = useCallback((wishlistId, itemId, patch) => {
+    setWishlists((prev) =>
+      prev.map((w) =>
+        w.id === wishlistId
+          ? { ...w, items: w.items.map((it) => (it.id === itemId ? { ...it, ...patch } : it)) }
+          : w,
+      ),
+    );
+  }, []);
+
+  const deleteItem: WishlistStore['deleteItem'] = useCallback((wishlistId, itemId) => {
+    setWishlists((prev) =>
+      prev.map((w) =>
+        w.id === wishlistId ? { ...w, items: w.items.filter((it) => it.id !== itemId) } : w,
+      ),
+    );
+  }, []);
+
   const renameWishlist: WishlistStore['renameWishlist'] = useCallback((id, title) => {
     const next = title.trim();
     if (!next) return;
@@ -124,6 +148,8 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         wishlists,
         createWishlist,
         addItem,
+        updateItem,
+        deleteItem,
         renameWishlist,
         deleteWishlist,
         getWishlist,

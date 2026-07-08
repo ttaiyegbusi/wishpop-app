@@ -9,7 +9,7 @@ export function ItemCardStack({
   onOpen,
 }: {
   items: WishlistItem[];
-  onOpen: (item: WishlistItem) => void;
+  onOpen: (index: number) => void;
 }) {
   if (items.length === 0) {
     return (
@@ -37,7 +37,7 @@ export function ItemCardStack({
               transform: `translateX(${left ? -CARD_OFFSET : CARD_OFFSET}px) rotate(${left ? -CARD_TILT : CARD_TILT}deg)`,
             }}
             aria-label={`Open ${item.title}`}
-            onClick={() => onOpen(item)}
+            onClick={() => onOpen(i)}
           >
             <span
               className="scatter-card-photo"
