@@ -311,7 +311,7 @@ function ItemDetailOverlay({
           <h2 className="item-overlay-title">{item.title}</h2>
           {item.price ? (
             <p className="item-overlay-price">
-              {/^\$/.test(item.price) ? item.price : `$${item.price}`}
+              {`${item.currency ?? ''} ${item.price}`.trim()}
             </p>
           ) : null}
           {item.notes ? <p className="item-overlay-notes">{item.notes}</p> : null}

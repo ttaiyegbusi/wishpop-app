@@ -18,6 +18,7 @@ export type WishlistItem = {
   title: string;
   imageDataUrl: string | null;
   price: string;
+  currency: string;
   link: string;
   notes: string;
 };

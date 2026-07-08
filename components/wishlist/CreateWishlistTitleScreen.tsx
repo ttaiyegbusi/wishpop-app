@@ -10,11 +10,30 @@ export function CreateWishlistTitleScreen() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState('');
+  // Height of the on-screen keyboard, so the Next CTA can ride just above it
+  // while it's open and drop flush to the bottom once it's dismissed.
+  const [keyboardInset, setKeyboardInset] = useState(0);
 
   const isValid = title.trim().length > 0;
 
   useEffect(() => {
     inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKeyboardInset(inset);
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
   }, []);
 
   function handleNext() {
@@ -44,15 +63,7 @@ export function CreateWishlistTitleScreen() {
         </button>
 
         <p className="create-title-heading">Create wishlist folder</p>
-
-        <button
-          type="button"
-          className={`next-button ${isValid ? 'is-active' : ''}`}
-          disabled={!isValid}
-          onClick={handleNext}
-        >
-          Next
-        </button>
+        <span className="create-title-header-spacer" aria-hidden="true" />
       </header>
 
       <form
@@ -77,6 +88,17 @@ export function CreateWishlistTitleScreen() {
           autoComplete="off"
         />
       </form>
+
+      <div className="create-title-actions" style={{ bottom: keyboardInset }}>
+        <button
+          type="button"
+          className={`create-title-next ${isValid ? 'is-active' : ''}`}
+          disabled={!isValid}
+          onClick={handleNext}
+        >
+          Next
+        </button>
+      </div>
     </main>
   );
 }

@@ -813,30 +813,44 @@ code {
   white-space: nowrap;
 }
 
-.next-button {
-  background: transparent;
-  color: #B8B8B8;
-  font-size: 14px;
-  font-weight: 700;
-  border: none;
-  cursor: default;
-  padding: 0;
+/* keeps the centred heading balanced now that Next moved to the bottom */
+.create-title-header-spacer {
+  width: 40px;
+  height: 40px;
   flex: 0 0 auto;
-  transition: transform 150ms ease, background-color 150ms ease, color 150ms ease;
 }
 
-.next-button.is-active {
-  width: 65px;
-  height: 44px;
+/* full-width Next CTA that rides above the keyboard, flush to the bottom
+   when the keyboard is dismissed (inline `bottom` set from visualViewport) */
+.create-title-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding: 12px 20px calc(14px + env(safe-area-inset-bottom));
+  z-index: 5;
+  transition: bottom 200ms cubic-bezier(0.22, 0.85, 0.3, 1);
+}
+
+.create-title-next {
+  width: 100%;
+  height: 56px;
+  border: none;
+  border-radius: 999px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  background: #E7E7E7;
+  color: #B0B0B0;
+  cursor: default;
+  transition: background-color 150ms ease, color 150ms ease, transform 120ms ease;
+}
+.create-title-next.is-active {
   background: #171717;
   color: #FFFFFF;
-  border-radius: 999px;
-  font-weight: 800;
   cursor: pointer;
 }
-
-.next-button.is-active:active {
-  transform: scale(0.98);
+.create-title-next.is-active:active {
+  transform: scale(0.99);
 }
 
 /* body */
@@ -974,14 +988,15 @@ code {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 34px 20px 32px;
+  padding: 24px 20px 110px;
+  overflow-y: auto;
 }
 
 /* image card */
 .item-image {
   position: relative;
-  width: 150px;
-  height: 190px;
+  width: 184px;
+  height: 210px;
   border-radius: 22px;
   border: none;
   background: #FFFFFF;
@@ -996,7 +1011,7 @@ code {
 
 .item-image-badge {
   position: absolute;
-  top: 12px;
+  bottom: 12px;
   right: 12px;
   width: 30px;
   height: 30px;
@@ -1028,40 +1043,98 @@ code {
 }
 .item-title-input::placeholder { color: #D0D0D0; opacity: 1; }
 
-/* stacked white field rows */
+/* stacked-label white field cards */
 .item-fields {
   width: 100%;
-  margin-top: 34px;
+  margin-top: 30px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-}
-.item-field {
-  display: flex;
-  align-items: center;
   gap: 12px;
+}
+.add-field {
+  display: block;
+  width: 100%;
   background: #FFFFFF;
   border-radius: 16px;
-  padding: 0 18px;
-  height: 56px;
+  padding: 11px 16px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
-.item-field-label {
-  font-size: 15px;
+.add-field-label {
+  display: block;
+  font-size: 12px;
   font-weight: 500;
-  color: #171717;
-  flex: 0 0 auto;
+  color: #9A9A9A;
 }
-.item-field-input {
-  flex: 1;
+.add-field-input {
+  width: 100%;
+  margin-top: 3px;
   border: none;
   outline: none;
   background: transparent;
-  text-align: right;
-  font-size: 15px;
+  font-size: 16px;
+  color: #171717;
+  resize: none;
+}
+.add-field-input::placeholder { color: #C7C7C7; }
+
+/* price row: amount on the left, currency picker on the right */
+.add-field--price {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.add-field-main {
+  flex: 1;
+  min-width: 0;
+  display: block;
+}
+.currency-picker {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding-left: 14px;
+  border-left: 1px solid #E9E9E9;
   color: #171717;
 }
-.item-field-input::placeholder { color: #BFBFBF; }
+.currency-select {
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding-right: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #171717;
+  cursor: pointer;
+}
+.currency-chevron {
+  position: absolute;
+  right: 0;
+  pointer-events: none;
+  color: #6B6B6B;
+}
+
+/* taller notes card */
+.add-field--notes .add-field-textarea {
+  min-height: 46px;
+  line-height: 1.4;
+}
+
+/* invalid-link warning */
+.add-field.is-invalid {
+  box-shadow: 0 0 0 1.5px rgba(229, 72, 77, 0.5);
+}
+.add-field-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #E5484D;
+}
 
 /* --- wishlist view (fanned card stack) --- */
 .wishlist-view {
