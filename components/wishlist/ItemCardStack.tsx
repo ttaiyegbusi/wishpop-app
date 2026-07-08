@@ -31,19 +31,25 @@ export function ItemCardStack({
             style={{
               zIndex: i + 1,
               marginTop: i === 0 ? 0 : -CARD_OVERLAP,
-              // cards are centred, then nudged left/right by a fixed offset,
-              // so the corner overlap stays constant across screen widths.
-              transform: `translateX(${left ? -CARD_OFFSET : CARD_OFFSET}px)`,
-              backgroundImage: item.imageDataUrl ? `url(${item.imageDataUrl})` : undefined,
+              // cards are centred, then nudged left/right by a fixed offset
+              // (constant corner overlap across widths) and tilted, leaning
+              // left / right alternately down the column.
+              transform: `translateX(${left ? -CARD_OFFSET : CARD_OFFSET}px) rotate(${left ? -CARD_TILT : CARD_TILT}deg)`,
             }}
             aria-label={`Open ${item.title}`}
             onClick={() => onOpen(item)}
-          />
+          >
+            <span
+              className="scatter-card-photo"
+              style={item.imageDataUrl ? { backgroundImage: `url(${item.imageDataUrl})` } : undefined}
+            />
+          </button>
         );
       })}
     </div>
   );
 }
 
-const CARD_OFFSET = 72; // horizontal nudge from centre for each column
-const CARD_OVERLAP = 74; // how far each card pulls up over the previous one
+const CARD_OFFSET = 60; // horizontal nudge from centre for each column
+const CARD_OVERLAP = 106; // how far each card pulls up over the previous one
+const CARD_TILT = 6; // degrees; leans left on even rows, right on odd rows
