@@ -31,8 +31,9 @@ export function ItemCardStack({
             style={{
               zIndex: i + 1,
               marginTop: i === 0 ? 0 : -CARD_OVERLAP,
-              marginLeft: left ? CARD_PAD : 'auto',
-              marginRight: left ? 'auto' : CARD_PAD,
+              // cards are centred, then nudged left/right by a fixed offset,
+              // so the corner overlap stays constant across screen widths.
+              transform: `translateX(${left ? -CARD_OFFSET : CARD_OFFSET}px)`,
               backgroundImage: item.imageDataUrl ? `url(${item.imageDataUrl})` : undefined,
             }}
             aria-label={`Open ${item.title}`}
@@ -44,5 +45,5 @@ export function ItemCardStack({
   );
 }
 
-const CARD_PAD = 70; // inset from the left/right edge (columns overlap toward center)
-const CARD_OVERLAP = 104; // how far each card pulls up over the previous one
+const CARD_OFFSET = 72; // horizontal nudge from centre for each column
+const CARD_OVERLAP = 74; // how far each card pulls up over the previous one

@@ -1218,22 +1218,55 @@ code {
   color: #9A9A9A;
 }
 
-/* vertically-scrolling column of overlapping, scattered item cards */
-.wishlist-view-stack {
-  flex: 1;
-  min-height: 0;
+/* Full-height scroll column: images scroll behind the header + action bar
+   and dissolve into the background at both edges via a gradient mask. */
+.wishlist-scroll {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 132px,
+    #000 calc(100% - 132px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 132px,
+    #000 calc(100% - 132px),
+    transparent 100%
+  );
+}
+.wishlist-scroll-inner {
+  min-height: 100%;
+  padding: 172px 0 148px;
+}
+
+/* header + title float above the scrolling images */
+.wishlist-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.wishlist-topbar .round-btn,
+.wishlist-topbar .folder-menu {
+  pointer-events: auto;
 }
 
 .card-scatter {
   display: flex;
   flex-direction: column;
-  padding: 18px 0 40px;
+  align-items: center;
 }
 
 .scatter-card {
-  position: relative;
   display: block;
   flex: 0 0 auto;
   width: 158px;
@@ -1246,15 +1279,13 @@ code {
   background-position: center;
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.16);
   cursor: pointer;
-  transition: transform 180ms ease;
 }
-.scatter-card:active { transform: scale(0.98); }
 
 .stack-empty {
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 320px;
   color: #9A9A9A;
   font-size: 15px;
 }
@@ -1336,9 +1367,13 @@ code {
   text-decoration: none;
 }
 
-/* pinned action bar; cards scroll behind it */
+/* pinned action bar floating above the scroll + bottom gradient */
 .wishlist-view-bar {
-  flex: 0 0 auto;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;

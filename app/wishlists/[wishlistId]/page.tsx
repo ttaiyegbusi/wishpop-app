@@ -70,52 +70,56 @@ export default function WishlistDetailPage({
 
   return (
     <main className="wishlist-view">
-      <header className="wishlist-view-header">
-        <button className="round-btn light" aria-label="Go back" onClick={() => router.push('/')}>
-          <BackIcon />
-        </button>
-        <div className="wishlist-view-header-actions">
-          <button className="round-btn light" aria-label="Share" onClick={handleShare}>
-            <Share size={17} strokeWidth={1.9} />
-          </button>
-          <div className="folder-menu-wrap">
-            <button
-              className="round-btn light"
-              aria-label="More options"
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((o) => !o)}
-            >
-              <MoreIcon />
-            </button>
-            {menuOpen ? (
-              <FolderMenu
-                onClose={() => setMenuOpen(false)}
-                onRename={() => {
-                  setMenuOpen(false);
-                  setRenaming(true);
-                }}
-                onDelete={() => {
-                  setMenuOpen(false);
-                  setConfirmDelete(true);
-                }}
-                onShare={() => {
-                  setMenuOpen(false);
-                  handleShare();
-                }}
-              />
-            ) : null}
-          </div>
+      <div className="wishlist-scroll">
+        <div className="wishlist-scroll-inner">
+          <ItemCardStack items={items} onOpen={setOpenItem} />
         </div>
-      </header>
-
-      <div className="wishlist-view-heading">
-        <h1 className="wishlist-view-title">{wishlist?.title ?? '…'}</h1>
-        {wishlist ? <p className="wishlist-view-subtitle">{subtitle}</p> : null}
       </div>
 
-      <div className="wishlist-view-stack">
-        <ItemCardStack items={items} onOpen={setOpenItem} />
+      <div className="wishlist-topbar">
+        <header className="wishlist-view-header">
+          <button className="round-btn light" aria-label="Go back" onClick={() => router.push('/')}>
+            <BackIcon />
+          </button>
+          <div className="wishlist-view-header-actions">
+            <button className="round-btn light" aria-label="Share" onClick={handleShare}>
+              <Share size={17} strokeWidth={1.9} />
+            </button>
+            <div className="folder-menu-wrap">
+              <button
+                className="round-btn light"
+                aria-label="More options"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((o) => !o)}
+              >
+                <MoreIcon />
+              </button>
+              {menuOpen ? (
+                <FolderMenu
+                  onClose={() => setMenuOpen(false)}
+                  onRename={() => {
+                    setMenuOpen(false);
+                    setRenaming(true);
+                  }}
+                  onDelete={() => {
+                    setMenuOpen(false);
+                    setConfirmDelete(true);
+                  }}
+                  onShare={() => {
+                    setMenuOpen(false);
+                    handleShare();
+                  }}
+                />
+              ) : null}
+            </div>
+          </div>
+        </header>
+
+        <div className="wishlist-view-heading">
+          <h1 className="wishlist-view-title">{wishlist?.title ?? '…'}</h1>
+          {wishlist ? <p className="wishlist-view-subtitle">{subtitle}</p> : null}
+        </div>
       </div>
 
       {openItem ? (
