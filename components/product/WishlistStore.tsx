@@ -93,12 +93,15 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const cloudRef = useRef(false);
   const wishlistsRef = useRef<DraftWishlist[]>([]);
   const pendingSync = useRef<Set<string>>(new Set());
+  // Per-wishlist promise chain: pushes for the same wishlist run strictly one
+  // after another, so an in-flight push can never race a later one and wipe a
+  // just-added item (which was losing items on slower networks).
+  const pushChain = useRef<Map<string, Promise<void>>>(new Map());
   wishlistsRef.current = wishlists;
 
   // Push a wishlist to the cloud after the current render commits, coalescing
-  // multiple calls for the same id into one push of the final state. Deferring
-  // + debouncing avoids racing pushes (e.g. create + first addItem) that could
-  // otherwise clobber each other.
+  // multiple calls for the same id into one push of the final state, and
+  // serialising pushes per wishlist so they never overlap.
   const syncWishlist = useCallback((id: string) => {
     if (!cloudRef.current || !ownerKeyRef.current) return;
     if (pendingSync.current.has(id)) return;
@@ -106,7 +109,12 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     setTimeout(() => {
       pendingSync.current.delete(id);
       const wl = wishlistsRef.current.find((w) => w.id === id);
-      if (wl) void pushWishlist(ownerKeyRef.current, wl);
+      if (!wl) return;
+      const prev = pushChain.current.get(id) ?? Promise.resolve();
+      const next = prev
+        .catch(() => {})
+        .then(() => pushWishlist(ownerKeyRef.current, wl));
+      pushChain.current.set(id, next);
     }, 0);
   }, []);
 

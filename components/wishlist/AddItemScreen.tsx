@@ -98,10 +98,15 @@ export function AddItemScreen() {
     setSaving(true);
 
     // Move a freshly-picked image into Storage (returns a URL); keep the inline
-    // data URL when the backend isn't configured or the upload fails.
+    // data URL when the backend isn't configured or the upload fails. Guarded so
+    // an upload error can never leave the button stuck on "Saving…".
     let imageValue = image;
     if (image && image.startsWith('data:')) {
-      imageValue = (await uploadImage(image)) ?? image;
+      try {
+        imageValue = (await uploadImage(image)) ?? image;
+      } catch {
+        imageValue = image;
+      }
     }
 
     // Editing in place: save changes and return to the wishlist.
