@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ImagePlus, TriangleAlert, ChevronDown } from 'lucide-react';
 import { useWishlists } from '@/components/product/WishlistStore';
 import { fileToDownscaledDataUrl } from '@/lib/product/image';
+import { uploadImage } from '@/actions/image.actions';
 
 const DRAFT_TITLE_KEY = 'wishpop:wishlistDraft:title';
 const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR', 'CAD'];
@@ -29,6 +30,7 @@ export function AddItemScreen() {
   const [currency, setCurrency] = useState('NGN');
   const [link, setLink] = useState('');
   const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -91,14 +93,22 @@ export function AddItemScreen() {
     }
   }
 
-  function handleNext() {
-    if (!isValid || !ready) return;
+  async function handleNext() {
+    if (!isValid || !ready || saving) return;
+    setSaving(true);
+
+    // Move a freshly-picked image into Storage (returns a URL); keep the inline
+    // data URL when the backend isn't configured or the upload fails.
+    let imageValue = image;
+    if (image && image.startsWith('data:')) {
+      imageValue = (await uploadImage(image)) ?? image;
+    }
 
     // Editing in place: save changes and return to the wishlist.
     if (existing && editItem) {
       updateItem(existing.id, editItem.id, {
         title: title.trim(),
-        imageDataUrl: image,
+        imageDataUrl: imageValue,
         price: price.trim(),
         currency,
         link: link.trim(),
@@ -117,7 +127,7 @@ export function AddItemScreen() {
 
     const newItemId = addItem(wishlistId, {
       title: title.trim(),
-      imageDataUrl: image,
+      imageDataUrl: imageValue,
       price: price.trim(),
       currency,
       link: link.trim(),
@@ -261,10 +271,10 @@ export function AddItemScreen() {
         <button
           type="button"
           className={`create-title-next ${isValid ? 'is-active' : ''}`}
-          disabled={!isValid}
+          disabled={!isValid || saving}
           onClick={handleNext}
         >
-          {editItem ? 'Save' : 'Next'}
+          {saving ? 'Saving…' : editItem ? 'Save' : 'Next'}
         </button>
       </div>
     </main>
