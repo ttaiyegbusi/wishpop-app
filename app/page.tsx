@@ -158,13 +158,14 @@ function HomeFolderCard({
         aria-label={`Open ${wishlist.title}`}
         onClick={() => router.push(`/wishlists/${wishlist.id}`)}
       >
-        <span className="hf-back" aria-hidden="true" />
+        <img className="hf-back-img" src="/assets/folder-card-back.svg" alt="" aria-hidden="true" />
         <span className="hf-photos" aria-hidden="true">
           {photos.map((src, i) => (
             <span key={i} className="hf-photo" style={{ backgroundImage: `url(${src})` }} />
           ))}
         </span>
-        <span className="hf-front">
+        <img className="hf-front-img" src="/assets/folder-card-front.svg" alt="" aria-hidden="true" />
+        <span className="hf-front-text">
           <span className="hf-title">{wishlist.title}</span>
           <span className="hf-count">
             {count} item{count === 1 ? '' : 's'}
