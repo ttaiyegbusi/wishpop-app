@@ -10,20 +10,21 @@ import { useWishlists, type WishlistItem } from '@/components/product/WishlistSt
 // actions are edit/delete; in 'reserve' mode they are Reserve + close.
 export function ItemStoryViewer({
   wishlistId,
+  items,
   startIndex,
   onClose,
   mode = 'owner',
   onReserve,
 }: {
   wishlistId: string;
+  items: WishlistItem[];
   startIndex: number;
   onClose: () => void;
   mode?: 'owner' | 'reserve';
   onReserve?: (item: WishlistItem) => void;
 }) {
   const router = useRouter();
-  const { getWishlist, deleteItem } = useWishlists();
-  const items = getWishlist(wishlistId)?.items ?? [];
+  const { deleteItem } = useWishlists();
   const count = items.length;
 
   const [index, setIndex] = useState(startIndex);

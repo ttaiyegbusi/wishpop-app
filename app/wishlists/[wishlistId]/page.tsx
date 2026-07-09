@@ -152,6 +152,7 @@ export default function WishlistDetailPage({
       {openIndex !== null ? (
         <ItemStoryViewer
           wishlistId={wishlistId}
+          items={items}
           startIndex={openIndex}
           onClose={() => setOpenIndex(null)}
         />

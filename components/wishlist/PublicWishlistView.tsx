@@ -1,42 +1,61 @@
 'use client';
 
-import { useState } from 'react';
-import { useWishlists, type WishlistItem } from '@/components/product/WishlistStore';
+import { useEffect, useState } from 'react';
+import type { DraftWishlist, WishlistItem } from '@/components/product/WishlistStore';
+import { fetchPublicWishlist } from '@/actions/wishlist.actions';
+import { reserveItem, unreserveItem } from '@/actions/reservation.actions';
 import { ItemCardStack } from './ItemCardStack';
 import { ItemStoryViewer } from './ItemStoryViewer';
 import { Toast } from '@/components/ui/Toast';
 
-// Viewer-facing page for a shared wishlist: browse the items and reserve one.
-// UI-first — reads/writes the same localStorage store, so it works on the
-// device the wishlist was created on (real cross-device sharing needs a
-// backend, which is the planned next step).
+// Viewer-facing page for a shared wishlist: fetch it from Supabase by its share
+// token, browse the items, and reserve one (writes go through server actions).
 export function PublicWishlistView({ shareToken }: { shareToken: string }) {
-  const { ready, getWishlist, reserveItem, unreserveItem } = useWishlists();
-  const wishlist = getWishlist(shareToken);
-
+  // undefined = loading, null = not found
+  const [wishlist, setWishlist] = useState<DraftWishlist | null | undefined>(undefined);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [reserving, setReserving] = useState<WishlistItem | null>(null);
   const [reservedId, setReservedId] = useState<string | null>(null);
 
-  if (ready && !wishlist) {
+  useEffect(() => {
+    let alive = true;
+    fetchPublicWishlist(shareToken).then((w) => {
+      if (alive) setWishlist(w ?? null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [shareToken]);
+
+  function patchItem(itemId: string, reservation: WishlistItem['reservation']) {
+    setWishlist((w) =>
+      w ? { ...w, items: w.items.map((it) => (it.id === itemId ? { ...it, reservation } : it)) } : w,
+    );
+  }
+
+  if (wishlist === undefined) {
+    return <main className="wishlist-view public-view" />;
+  }
+
+  if (wishlist === null) {
     return (
       <main className="wishlist-view public-view">
         <div className="public-missing">
-          <p>This wishlist isn’t available on this device.</p>
-          <span>Open the link on the phone it was created on to reserve a gift.</span>
+          <p>This wishlist isn’t available.</p>
+          <span>The link may be wrong, or the list was deleted.</span>
         </div>
       </main>
     );
   }
 
-  const items = wishlist?.items ?? [];
+  const items = wishlist.items;
   const subtitle = `${items.length} item${items.length === 1 ? '' : 's'}`;
 
   return (
     <main className="wishlist-view public-view">
       <div className="wishlist-view-heading public-heading">
         <p className="public-eyebrow">Reserve a gift</p>
-        <h1 className="wishlist-view-title">{wishlist?.title ?? '…'}</h1>
+        <h1 className="wishlist-view-title">{wishlist.title}</h1>
         <p className="wishlist-view-subtitle">{subtitle}</p>
       </div>
 
@@ -47,6 +66,7 @@ export function PublicWishlistView({ shareToken }: { shareToken: string }) {
       {openIndex !== null ? (
         <ItemStoryViewer
           wishlistId={shareToken}
+          items={items}
           startIndex={openIndex}
           onClose={() => setOpenIndex(null)}
           mode="reserve"
@@ -58,12 +78,19 @@ export function PublicWishlistView({ shareToken }: { shareToken: string }) {
         <ReserveEmailModal
           item={reserving}
           onCancel={() => setReserving(null)}
-          onConfirm={(email) => {
-            reserveItem(shareToken, reserving.id, email);
-            const id = reserving.id;
+          onConfirm={async (email) => {
+            const item = reserving;
             setReserving(null);
-            setOpenIndex(null);
-            setReservedId(id);
+            const ok = await reserveItem(shareToken, item.id, email);
+            if (ok) {
+              patchItem(item.id, { email, createdAt: Date.now() });
+              setOpenIndex(null);
+              setReservedId(item.id);
+            } else {
+              // someone else got there first — refresh to show the real state
+              const fresh = await fetchPublicWishlist(shareToken);
+              if (fresh) setWishlist(fresh);
+            }
           }}
         />
       ) : null}
@@ -72,9 +99,11 @@ export function PublicWishlistView({ shareToken }: { shareToken: string }) {
         <Toast
           message="Reserved"
           actionLabel="Undo"
-          onAction={() => {
-            unreserveItem(shareToken, reservedId);
+          onAction={async () => {
+            const id = reservedId;
             setReservedId(null);
+            patchItem(id, null);
+            await unreserveItem(shareToken, id);
           }}
           onDismiss={() => setReservedId(null)}
         />

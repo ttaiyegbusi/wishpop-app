@@ -5,10 +5,17 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import { THEME_COLORS, type ThemeColorId } from '@/lib/product/colors';
+import {
+  backendConfigured,
+  deleteWishlistCloud,
+  fetchOwnerWishlists,
+  pushWishlist,
+} from '@/actions/wishlist.actions';
 
 // UI-first client store. Persists to localStorage so the create flow feels
 // real without a backend. Swap for Supabase-backed server actions later.
@@ -56,11 +63,22 @@ type WishlistStore = {
 };
 
 const STORAGE_KEY = 'wishpop.wishlists.v1';
+const OWNER_KEY_KEY = 'wishpop.ownerKey';
 
 function newId() {
   return typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : String(Date.now()) + Math.random().toString(16).slice(2);
+}
+
+// Per-device secret proving ownership of the wishlists this device created.
+function getOwnerKey() {
+  let key = localStorage.getItem(OWNER_KEY_KEY);
+  if (!key) {
+    key = newId();
+    localStorage.setItem(OWNER_KEY_KEY, key);
+  }
+  return key;
 }
 
 const Ctx = createContext<WishlistStore | null>(null);
@@ -69,14 +87,55 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const [wishlists, setWishlists] = useState<DraftWishlist[]>([]);
   const [ready, setReady] = useState(false);
 
+  // Cloud-sync plumbing: owner key, whether Supabase is configured, and a live
+  // ref to the wishlists so mutations can push the affected one after render.
+  const ownerKeyRef = useRef('');
+  const cloudRef = useRef(false);
+  const wishlistsRef = useRef<DraftWishlist[]>([]);
+  const pendingSync = useRef<Set<string>>(new Set());
+  wishlistsRef.current = wishlists;
+
+  // Push a wishlist to the cloud after the current render commits, coalescing
+  // multiple calls for the same id into one push of the final state. Deferring
+  // + debouncing avoids racing pushes (e.g. create + first addItem) that could
+  // otherwise clobber each other.
+  const syncWishlist = useCallback((id: string) => {
+    if (!cloudRef.current || !ownerKeyRef.current) return;
+    if (pendingSync.current.has(id)) return;
+    pendingSync.current.add(id);
+    setTimeout(() => {
+      pendingSync.current.delete(id);
+      const wl = wishlistsRef.current.find((w) => w.id === id);
+      if (wl) void pushWishlist(ownerKeyRef.current, wl);
+    }, 0);
+  }, []);
+
   useEffect(() => {
+    ownerKeyRef.current = getOwnerKey();
+    let cached: DraftWishlist[] = [];
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setWishlists(JSON.parse(raw));
+      if (raw) cached = JSON.parse(raw);
     } catch {
       /* ignore corrupt storage */
     }
-    setReady(true);
+    setWishlists(cached);
+
+    // If the backend is configured, cloud is the source of truth: load the
+    // owner's wishlists and replace the local cache. Otherwise stay local-only.
+    (async () => {
+      try {
+        if (await backendConfigured()) {
+          cloudRef.current = true;
+          const cloud = await fetchOwnerWishlists(ownerKeyRef.current);
+          if (cloud) setWishlists(cloud);
+        }
+      } catch {
+        /* offline / not configured — keep the local cache */
+      } finally {
+        setReady(true);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -99,38 +158,51 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         createdAt: Date.now(),
       };
       setWishlists((prev) => [wishlist, ...prev]);
+      syncWishlist(wishlist.id);
       return wishlist;
     },
-    [wishlists.length],
+    [wishlists.length, syncWishlist],
   );
 
-  const addItem: WishlistStore['addItem'] = useCallback((wishlistId, item) => {
-    const id = newId();
-    setWishlists((prev) =>
-      prev.map((w) =>
-        w.id === wishlistId ? { ...w, items: [...w.items, { ...item, id }] } : w,
-      ),
-    );
-    return id;
-  }, []);
+  const addItem: WishlistStore['addItem'] = useCallback(
+    (wishlistId, item) => {
+      const id = newId();
+      setWishlists((prev) =>
+        prev.map((w) =>
+          w.id === wishlistId ? { ...w, items: [...w.items, { ...item, id }] } : w,
+        ),
+      );
+      syncWishlist(wishlistId);
+      return id;
+    },
+    [syncWishlist],
+  );
 
-  const updateItem: WishlistStore['updateItem'] = useCallback((wishlistId, itemId, patch) => {
-    setWishlists((prev) =>
-      prev.map((w) =>
-        w.id === wishlistId
-          ? { ...w, items: w.items.map((it) => (it.id === itemId ? { ...it, ...patch } : it)) }
-          : w,
-      ),
-    );
-  }, []);
+  const updateItem: WishlistStore['updateItem'] = useCallback(
+    (wishlistId, itemId, patch) => {
+      setWishlists((prev) =>
+        prev.map((w) =>
+          w.id === wishlistId
+            ? { ...w, items: w.items.map((it) => (it.id === itemId ? { ...it, ...patch } : it)) }
+            : w,
+        ),
+      );
+      syncWishlist(wishlistId);
+    },
+    [syncWishlist],
+  );
 
-  const deleteItem: WishlistStore['deleteItem'] = useCallback((wishlistId, itemId) => {
-    setWishlists((prev) =>
-      prev.map((w) =>
-        w.id === wishlistId ? { ...w, items: w.items.filter((it) => it.id !== itemId) } : w,
-      ),
-    );
-  }, []);
+  const deleteItem: WishlistStore['deleteItem'] = useCallback(
+    (wishlistId, itemId) => {
+      setWishlists((prev) =>
+        prev.map((w) =>
+          w.id === wishlistId ? { ...w, items: w.items.filter((it) => it.id !== itemId) } : w,
+        ),
+      );
+      syncWishlist(wishlistId);
+    },
+    [syncWishlist],
+  );
 
   const reserveItem: WishlistStore['reserveItem'] = useCallback((wishlistId, itemId, email) => {
     setWishlists((prev) =>
@@ -162,16 +234,19 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const renameWishlist: WishlistStore['renameWishlist'] = useCallback((id, title) => {
-    const next = title.trim();
-    if (!next) return;
-    setWishlists((prev) =>
-      prev.map((w) => (w.id === id ? { ...w, title: next } : w)),
-    );
-  }, []);
+  const renameWishlist: WishlistStore['renameWishlist'] = useCallback(
+    (id, title) => {
+      const next = title.trim();
+      if (!next) return;
+      setWishlists((prev) => prev.map((w) => (w.id === id ? { ...w, title: next } : w)));
+      syncWishlist(id);
+    },
+    [syncWishlist],
+  );
 
   const deleteWishlist: WishlistStore['deleteWishlist'] = useCallback((id) => {
     setWishlists((prev) => prev.filter((w) => w.id !== id));
+    if (cloudRef.current && ownerKeyRef.current) void deleteWishlistCloud(ownerKeyRef.current, id);
   }, []);
 
   const getWishlist = useCallback(
