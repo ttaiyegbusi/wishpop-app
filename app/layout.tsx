@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { Analytics } from '@vercel/analytics/next';
 import { WishlistProvider } from '@/components/product/WishlistStore';
@@ -18,6 +18,30 @@ export const metadata: Metadata = {
   title: 'WishPop',
   description: 'Create wishlists, add the gifts you want, and share one link.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://app.wishpop.online'),
+  manifest: '/manifest.webmanifest',
+  applicationName: 'WishPop',
+  appleWebApp: {
+    capable: true,
+    title: 'WishPop',
+    statusBarStyle: 'default',
+  },
+  icons: {
+    icon: [
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: '/icons/apple-touch-icon.png',
+  },
+};
+
+// viewport-fit=cover for the notch; interactiveWidget=resizes-content makes the
+// layout (and our keyboard-aware CTAs) resize when the on-screen keyboard opens.
+export const viewport: Viewport = {
+  themeColor: '#F7F7F7',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
