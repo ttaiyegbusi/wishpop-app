@@ -40,14 +40,20 @@ export default function HomePage() {
     <main className="screen home-screen">
       <header className="home-header">
         <img className="home-logo" src="/assets/wordmark.png" alt="WishPop" />
-        <button
-          className="home-hamburger"
-          aria-label="Menu"
-          aria-expanded={navOpen}
-          onClick={() => setNavOpen((o) => !o)}
-        >
-          <Menu size={20} strokeWidth={2} />
-        </button>
+        <div className="home-header-actions">
+          <Link href="/wishlists/new" className="home-new-btn">
+            <Plus size={17} strokeWidth={2.6} />
+            New wishlist
+          </Link>
+          <button
+            className="home-hamburger"
+            aria-label="Menu"
+            aria-expanded={navOpen}
+            onClick={() => setNavOpen((o) => !o)}
+          >
+            <Menu size={20} strokeWidth={2} />
+          </button>
+        </div>
       </header>
 
       {isEmpty ? (
@@ -57,6 +63,7 @@ export default function HomePage() {
         </div>
       ) : (
         <div className="home-grid-scroll">
+          <h1 className="home-heading">Your wishlists</h1>
           <div className="home-grid">
             {wishlists.map((w) => (
               <HomeFolderCard
@@ -67,6 +74,12 @@ export default function HomePage() {
                 }
               />
             ))}
+            <Link href="/wishlists/new" className="hf-create-card" aria-label="Create wishlist">
+              <span className="hf-create-plus">
+                <Plus size={24} strokeWidth={2.4} />
+              </span>
+              <span className="hf-create-label">New wishlist</span>
+            </Link>
           </div>
         </div>
       )}

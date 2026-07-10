@@ -755,6 +755,126 @@ code {
 }
 .home-fab:active { transform: scale(0.95); }
 
+/* desktop-only home elements — hidden on the phone layout */
+.home-new-btn,
+.home-heading,
+.hf-create-card {
+  display: none;
+}
+
+/* ===== Desktop web layout (>= 900px) ===== */
+@media (min-width: 900px) {
+  /* home breaks out of the centred phone frame into a full-width web page */
+  .app-frame:has(.home-screen) {
+    align-items: stretch;
+    padding: 0;
+    background: #F4F4F5;
+  }
+  .app-frame > .home-screen {
+    max-width: none;
+    width: 100%;
+    height: auto;
+    min-height: 100dvh;
+    border-radius: 0;
+    overflow: visible;
+    padding: 0;
+    display: block;
+    background: #F4F4F5;
+  }
+
+  /* sticky top bar */
+  .home-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    width: 100%;
+    margin: 0;
+    padding: 16px clamp(24px, 4vw, 48px);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #ececec;
+  }
+  .home-logo { height: 34px; }
+  .home-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .home-new-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #171717;
+    color: #FFFFFF;
+    font-family: var(--font-baloo), system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 11px 20px 11px 16px;
+    border-radius: 999px;
+    text-decoration: none;
+  }
+  .home-new-btn:active { transform: scale(0.97); }
+  .home-screen .home-nav-menu {
+    top: 70px;
+    right: clamp(24px, 4vw, 48px);
+  }
+
+  /* centred content column with a comfortable max width */
+  .home-grid-scroll {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 36px clamp(24px, 4vw, 48px) 64px;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .home-heading {
+    display: block;
+    font-family: var(--font-baloo), system-ui, sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: #171717;
+    margin-bottom: 24px;
+  }
+  .home-grid {
+    grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+    gap: 30px 26px;
+  }
+
+  /* dashed "create" tile at the end of the grid */
+  .hf-create-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    aspect-ratio: 165 / 166;
+    border: 2px dashed #d0d0d3;
+    border-radius: 20px;
+    color: #9a9a9f;
+    text-decoration: none;
+    transition: border-color 150ms ease, color 150ms ease;
+  }
+  .hf-create-card:hover { border-color: #171717; color: #171717; }
+  .hf-create-plus {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: #171717;
+    color: #FFFFFF;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hf-create-label { font-size: 14px; font-weight: 600; }
+
+  /* the mobile FAB gives way to the top-bar button + create tile */
+  .home-fab { display: none; }
+
+  /* empty state centred in the page */
+  .home-empty { min-height: calc(100dvh - 74px); }
+}
+
 /* --- Create Wishlist Title --- */
 .create-screen {
   padding: 20px;
