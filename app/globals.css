@@ -584,7 +584,7 @@ code {
   margin-top: 8px;
   flex: 0 0 auto;
 }
-.home-logo { height: 30px; width: auto; }
+.home-logo { height: 34px; width: auto; }
 .home-hamburger {
   width: 42px;
   height: 42px;
@@ -669,7 +669,7 @@ code {
   pointer-events: none;
 }
 .hf-back-img { z-index: 0; }
-.hf-front-img { z-index: 2; filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.12)); }
+.hf-front-img { z-index: 2; filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.10)); }
 .hf-photos {
   position: absolute;
   top: 10%;
@@ -696,9 +696,11 @@ code {
 .hf-front-text {
   position: absolute;
   left: 12%;
-  right: 12%;
+  right: 22%;
   bottom: 15%;
   z-index: 3;
+  text-align: left;
+  align-items: flex-start;
   display: flex;
   flex-direction: column;
   pointer-events: none;
@@ -720,7 +722,7 @@ code {
 }
 .hf-menu-btn {
   position: absolute;
-  bottom: 8%;
+  bottom: 16%;
   right: 8%;
   z-index: 4;
   border: none;

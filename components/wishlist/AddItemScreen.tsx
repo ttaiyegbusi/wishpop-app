@@ -30,7 +30,6 @@ export function AddItemScreen() {
   const [currency, setCurrency] = useState('NGN');
   const [link, setLink] = useState('');
   const [notes, setNotes] = useState('');
-  const [saving, setSaving] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -93,32 +92,34 @@ export function AddItemScreen() {
     }
   }
 
-  async function handleNext() {
-    if (!isValid || !ready || saving) return;
-    setSaving(true);
+  // Upload a freshly-picked image to Storage in the background and swap the
+  // item's inline data URL for the returned URL. Keeps saving instant — we
+  // don't block navigation on the upload.
+  function uploadInBackground(wishlistId: string, itemId: string, dataUrl: string) {
+    uploadImage(dataUrl)
+      .then((url) => {
+        if (url) updateItem(wishlistId, itemId, { imageDataUrl: url });
+      })
+      .catch(() => {
+        /* keep the inline data URL */
+      });
+  }
 
-    // Move a freshly-picked image into Storage (returns a URL); keep the inline
-    // data URL when the backend isn't configured or the upload fails. Guarded so
-    // an upload error can never leave the button stuck on "Saving…".
-    let imageValue = image;
-    if (image && image.startsWith('data:')) {
-      try {
-        imageValue = (await uploadImage(image)) ?? image;
-      } catch {
-        imageValue = image;
-      }
-    }
+  function handleNext() {
+    if (!isValid || !ready) return;
+    const hasNewImage = !!image && image.startsWith('data:');
 
-    // Editing in place: save changes and return to the wishlist.
+    // Editing in place: save changes and return to the wishlist immediately.
     if (existing && editItem) {
       updateItem(existing.id, editItem.id, {
         title: title.trim(),
-        imageDataUrl: imageValue,
+        imageDataUrl: image,
         price: price.trim(),
         currency,
         link: link.trim(),
         notes: notes.trim(),
       });
+      if (hasNewImage) uploadInBackground(existing.id, editItem.id, image!);
       router.push(`/wishlists/${existing.id}`);
       return;
     }
@@ -132,12 +133,14 @@ export function AddItemScreen() {
 
     const newItemId = addItem(wishlistId, {
       title: title.trim(),
-      imageDataUrl: imageValue,
+      imageDataUrl: image,
       price: price.trim(),
       currency,
       link: link.trim(),
       notes: notes.trim(),
     });
+
+    if (hasNewImage) uploadInBackground(wishlistId, newItemId, image!);
 
     // Signal the "New Item added" toast to the wishlist view without touching
     // the URL (manual history edits desync the App Router).
@@ -276,10 +279,10 @@ export function AddItemScreen() {
         <button
           type="button"
           className={`create-title-next ${isValid ? 'is-active' : ''}`}
-          disabled={!isValid || saving}
+          disabled={!isValid}
           onClick={handleNext}
         >
-          {saving ? 'Saving…' : editItem ? 'Save' : 'Next'}
+          {editItem ? 'Save' : 'Next'}
         </button>
       </div>
     </main>

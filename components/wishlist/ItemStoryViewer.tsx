@@ -65,9 +65,10 @@ export function ItemStoryViewer({
 
   return (
     <div className="item-story" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="item-story-stage" onClick={(e) => e.stopPropagation()}>
+      <div className="item-story-stage">
         <div
           className="item-story-card"
+          onClick={(e) => e.stopPropagation()}
           onPointerDown={onPointerDown}
           onPointerUp={onPointerUp}
         >
@@ -117,7 +118,7 @@ export function ItemStoryViewer({
         </div>
 
         {mode === 'reserve' ? (
-          <div className="item-story-actions">
+          <div className="item-story-actions" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               className="item-story-reserve"

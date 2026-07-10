@@ -39,7 +39,7 @@ export default function HomePage() {
   return (
     <main className="screen home-screen">
       <header className="home-header">
-        <img className="home-logo" src="/assets/logo-mark.svg" alt="WishPop" />
+        <img className="home-logo" src="/assets/wordmark.png" alt="WishPop" />
         <button
           className="home-hamburger"
           aria-label="Menu"
