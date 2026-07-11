@@ -109,7 +109,8 @@ export function AddItemScreen() {
     if (!isValid || !ready) return;
     const hasNewImage = !!image && image.startsWith('data:');
 
-    // Editing in place: save changes and return to the wishlist immediately.
+    // Editing in place: save and just close the modal — the wishlist's detail
+    // is the page behind it and re-renders with the change instantly.
     if (existing && editItem) {
       updateItem(existing.id, editItem.id, {
         title: title.trim(),
@@ -120,7 +121,7 @@ export function AddItemScreen() {
         notes: notes.trim(),
       });
       if (hasNewImage) uploadInBackground(existing.id, editItem.id, image!);
-      router.push(`/wishlists/${existing.id}`);
+      router.back();
       return;
     }
 
@@ -142,10 +143,15 @@ export function AddItemScreen() {
 
     if (hasNewImage) uploadInBackground(wishlistId, newItemId, image!);
 
-    // Signal the "New Item added" toast to the wishlist view without touching
-    // the URL (manual history edits desync the App Router).
-    sessionStorage.setItem('wishpop:justAddedItem', newItemId);
-    router.push(`/wishlists/${wishlistId}`);
+    if (existing) {
+      // Adding to an existing wishlist: its detail is behind this modal, so
+      // just close the modal to reveal it (instant — no navigation/fetch).
+      router.back();
+    } else {
+      // Brand-new wishlist: open its detail and flag the "New Item added" toast.
+      sessionStorage.setItem('wishpop:justAddedItem', newItemId);
+      router.push(`/wishlists/${wishlistId}`);
+    }
   }
 
   return (
