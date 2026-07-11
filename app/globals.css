@@ -520,7 +520,7 @@ code {
   min-height: 100dvh;
   display: flex;
   justify-content: center;
-  background: #E9E9EC;
+  background: #F4F4F5;
 }
 
 .app-frame > main {
@@ -2001,4 +2001,36 @@ code {
   .item-overlay,
   .folder-modal { position: fixed; }
   .wishlist-view .pill-toast { position: fixed; }
+}
+
+/* public reserve view: item area scrolls on mobile (no gradient mask) */
+.wishlist-view-stack {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ===== Public reserve view — wide desktop layout (>= 900px) ===== */
+@media (min-width: 900px) {
+  .public-view .wishlist-view-heading {
+    max-width: 1080px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 34px clamp(24px, 4vw, 48px) 4px;
+    text-align: left;
+  }
+  .public-view .wishlist-view-stack {
+    max-width: 1080px;
+    width: 100%;
+    margin: 0 auto;
+    overflow: visible;
+    padding: 20px clamp(24px, 4vw, 48px) 64px;
+  }
+  /* create / add-item screens: keep them as centred focused panels on the
+     same neutral backdrop as the rest of the desktop app */
+  .app-frame:has(.create-title-screen),
+  .app-frame:has(.add-item-screen) {
+    background: #F4F4F5;
+  }
 }
