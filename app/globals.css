@@ -2035,25 +2035,50 @@ code {
   }
 }
 
-/* ===== Create-folder / Add-item — centred web panels (>= 900px) =====
-   Break out of the tall phone frame: the panel fits its content, the CTA
-   flows at the end instead of floating at the bottom of a phone. */
+/* the modal backdrop + panel wrapper are inert on mobile (full-screen flow) */
+.screen-backdrop { display: none; }
+.screen-panel { display: contents; }
+
+/* ===== Create-folder / Add-item — modal on the web (>= 900px) ===== */
 @media (min-width: 900px) {
-  .app-frame:has(.create-title-screen),
-  .app-frame:has(.add-item-screen) {
-    align-items: center;
-    padding: 40px 0;
-  }
+  /* the screen becomes a full-viewport modal container */
   .app-frame > .create-title-screen,
   .app-frame > .add-item-screen {
-    width: min(540px, calc(100vw - 48px));
+    position: fixed;
+    inset: 0;
+    width: auto;
+    max-width: none;
     height: auto;
     min-height: 0;
-    max-height: calc(100dvh - 80px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    overflow: visible;
+  }
+  .screen-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    border: none;
+    background: rgba(18, 18, 18, 0.5);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    cursor: pointer;
+    z-index: 0;
+  }
+  .screen-panel {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 1;
+    width: min(540px, calc(100vw - 48px));
+    max-height: calc(100dvh - 64px);
     overflow: hidden auto;
-    border-radius: 26px;
     background: #FFFFFF;
-    box-shadow: 0 24px 70px rgba(17, 17, 17, 0.12);
+    border-radius: 26px;
+    box-shadow: 0 30px 80px rgba(17, 17, 17, 0.3);
+    animation: overlay-pop 220ms cubic-bezier(0.22, 0.85, 0.3, 1);
   }
   .create-title-form,
   .add-item-form {

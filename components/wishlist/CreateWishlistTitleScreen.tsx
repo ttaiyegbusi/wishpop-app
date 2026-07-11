@@ -44,6 +44,13 @@ export function CreateWishlistTitleScreen() {
 
   return (
     <main className="create-title-screen">
+      <button
+        type="button"
+        className="screen-backdrop"
+        aria-label="Close"
+        onClick={() => router.back()}
+      />
+      <div className="screen-panel">
       <header className="create-title-header">
         <button
           type="button"
@@ -98,6 +105,7 @@ export function CreateWishlistTitleScreen() {
         >
           Next
         </button>
+      </div>
       </div>
     </main>
   );

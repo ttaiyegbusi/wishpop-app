@@ -150,6 +150,13 @@ export function AddItemScreen() {
 
   return (
     <main className="add-item-screen">
+      <button
+        type="button"
+        className="screen-backdrop"
+        aria-label="Close"
+        onClick={() => router.back()}
+      />
+      <div className="screen-panel">
       <header className="add-item-header">
         <button
           type="button"
@@ -284,6 +291,7 @@ export function AddItemScreen() {
         >
           {editItem ? 'Save' : 'Next'}
         </button>
+      </div>
       </div>
     </main>
   );
