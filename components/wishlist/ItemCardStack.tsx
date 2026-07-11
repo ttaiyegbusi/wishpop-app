@@ -1,15 +1,20 @@
 'use client';
 
+import Link from 'next/link';
 import type { WishlistItem } from '@/components/product/WishlistStore';
 
 // Vertically-scrolling column of overlapping item cards in a strict
 // two-position zig-zag (alternating left / right). Tap a card to open it.
+// On the wide desktop layout the same cards flow into a grid (see CSS), with
+// an optional "Add item" tile when `addHref` is given.
 export function ItemCardStack({
   items,
   onOpen,
+  addHref,
 }: {
   items: WishlistItem[];
   onOpen: (index: number) => void;
+  addHref?: string;
 }) {
   if (items.length === 0) {
     return (
@@ -47,6 +52,12 @@ export function ItemCardStack({
           </button>
         );
       })}
+      {addHref ? (
+        <Link className="scatter-add" href={addHref} aria-label="Add item">
+          <span className="scatter-add-plus">+</span>
+          <span className="scatter-add-label">Add item</span>
+        </Link>
+      ) : null}
     </div>
   );
 }

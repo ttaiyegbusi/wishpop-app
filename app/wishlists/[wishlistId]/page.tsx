@@ -86,7 +86,11 @@ export default function WishlistDetailPage({
     <main className="wishlist-view">
       <div className="wishlist-scroll">
         <div className="wishlist-scroll-inner">
-          <ItemCardStack items={items} onOpen={setOpenIndex} />
+          <ItemCardStack
+            items={items}
+            onOpen={setOpenIndex}
+            addHref={`/wishlists/new/items?wishlist=${wishlistId}`}
+          />
         </div>
       </div>
 

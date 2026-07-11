@@ -1896,3 +1896,109 @@ code {
   gap: 14px;
   color: #9A9A9A;
 }
+
+/* scatter "Add item" tile — only shown in the desktop grid */
+.scatter-add { display: none; }
+
+/* ===== Wishlist detail — wide desktop layout (>= 900px) ===== */
+@media (min-width: 900px) {
+  .app-frame:has(.wishlist-view) {
+    align-items: stretch;
+    padding: 0;
+    background: #F4F4F5;
+  }
+  .app-frame > .wishlist-view {
+    max-width: none;
+    width: 100%;
+    height: auto;
+    min-height: 100dvh;
+    border-radius: 0;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    background: #F4F4F5;
+  }
+
+  /* header + title become a static top area, centred at a comfortable width */
+  .wishlist-topbar {
+    order: 1;
+    position: static;
+    pointer-events: auto;
+    width: 100%;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 30px clamp(24px, 4vw, 48px) 4px;
+  }
+  .wishlist-view-header { padding: 0; }
+  .wishlist-view-heading {
+    text-align: left;
+    padding: 20px 0 0;
+  }
+  .wishlist-view-title { font-size: 34px; }
+
+  /* the scatter flows into a gallery grid */
+  .wishlist-scroll {
+    order: 2;
+    position: static;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+    width: 100%;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 clamp(24px, 4vw, 48px) 64px;
+  }
+  .wishlist-scroll-inner {
+    min-height: 0;
+    padding: 24px 0 0;
+  }
+  .card-scatter {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
+    gap: 26px 22px;
+    align-items: start;
+  }
+  .scatter-card {
+    transform: none !important;
+    margin: 0 !important;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 190 / 246;
+  }
+  .scatter-add {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    aspect-ratio: 190 / 246;
+    border: 2px dashed #d0d0d3;
+    border-radius: 22px;
+    color: #9a9a9f;
+    text-decoration: none;
+    transition: border-color 150ms ease, color 150ms ease;
+  }
+  .scatter-add:hover { border-color: #171717; color: #171717; }
+  .scatter-add-plus {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: #171717;
+    color: #FFFFFF;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    line-height: 1;
+  }
+  .scatter-add-label { font-size: 14px; font-weight: 600; }
+
+  /* the mobile Done / + bar is replaced by the back arrow + Add tile */
+  .wishlist-view-bar { display: none; }
+
+  /* overlays anchor to the viewport, not the (tall) page */
+  .item-story,
+  .item-overlay,
+  .folder-modal { position: fixed; }
+  .wishlist-view .pill-toast { position: fixed; }
+}
