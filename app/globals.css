@@ -2035,6 +2035,18 @@ code {
   }
 }
 
+/* the create / add-item screens overlay the current page (they render in the
+   intercepting-route modal slot, over the home / detail). On mobile the screen
+   is opaque and fills the viewport (reads as a full page); on desktop it
+   becomes a dim-backdrop modal (below). */
+.app-frame > .create-title-screen,
+.app-frame > .add-item-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  border-radius: 0;
+}
+
 /* the modal backdrop + panel wrapper are inert on mobile (full-screen flow) */
 .screen-backdrop { display: none; }
 .screen-panel { display: contents; }

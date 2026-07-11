@@ -44,13 +44,21 @@ export const viewport: Viewport = {
   interactiveWidget: 'resizes-content',
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+  modal,
+}: Readonly<{ children: React.ReactNode; modal: React.ReactNode }>) {
   return (
     <html lang="en" className={baloo.variable}>
       <body>
-        {/* the whole app is the product: store + mobile-first phone frame */}
+        {/* the whole app is the product: store + mobile-first phone frame.
+            `modal` is the intercepting-route slot (create / add-item) that
+            overlays the current page. */}
         <WishlistProvider>
-          <div className="app-frame">{children}</div>
+          <div className="app-frame">
+            {children}
+            {modal}
+          </div>
         </WishlistProvider>
         <Analytics />
       </body>
