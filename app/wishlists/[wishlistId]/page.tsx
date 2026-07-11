@@ -16,7 +16,8 @@ export default function WishlistDetailPage({
 }) {
   const { wishlistId } = use(params);
   const router = useRouter();
-  const { ready, getWishlist, renameWishlist, deleteWishlist } = useWishlists();
+  const { ready, getWishlist, renameWishlist, deleteWishlist, justAdded, clearJustAdded } =
+    useWishlists();
   const wishlist = getWishlist(wishlistId);
   const [toast, setToast] = useState('');
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -25,16 +26,15 @@ export default function WishlistDetailPage({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [addedItemId, setAddedItemId] = useState<string | null>(null);
 
-  // The add-item flow leaves the new item id in sessionStorage; show the
-  // "New Item added" toast once. Removal is deferred so React's dev double-
-  // mount (fresh instance) still reads the value before it's cleared.
+  // Show the "New Item added" toast whenever an item is added to this wishlist,
+  // whether the detail freshly mounts (new wishlist) or is revealed by the
+  // add-item modal closing (existing wishlist).
   useEffect(() => {
-    const added = sessionStorage.getItem('wishpop:justAddedItem');
-    if (!added) return;
-    setAddedItemId(added);
-    const t = setTimeout(() => sessionStorage.removeItem('wishpop:justAddedItem'), 400);
-    return () => clearTimeout(t);
-  }, []);
+    if (justAdded && justAdded.wishlistId === wishlistId) {
+      setAddedItemId(justAdded.itemId);
+      clearJustAdded();
+    }
+  }, [justAdded, wishlistId, clearJustAdded]);
 
   const items = wishlist?.items ?? [];
   const subtitle = wishlist

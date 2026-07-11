@@ -60,6 +60,12 @@ type WishlistStore = {
   renameWishlist: (id: string, title: string) => void;
   deleteWishlist: (id: string) => void;
   getWishlist: (id: string) => DraftWishlist | undefined;
+  // The most recently added item, so the wishlist detail can show its
+  // "New Item added" toast even when it's just revealed (modal closed)
+  // rather than freshly mounted.
+  justAdded: { wishlistId: string; itemId: string } | null;
+  flagItemAdded: (wishlistId: string, itemId: string) => void;
+  clearJustAdded: () => void;
 };
 
 const STORAGE_KEY = 'wishpop.wishlists.v1';
@@ -86,6 +92,12 @@ const Ctx = createContext<WishlistStore | null>(null);
 export function WishlistProvider({ children }: { children: ReactNode }) {
   const [wishlists, setWishlists] = useState<DraftWishlist[]>([]);
   const [ready, setReady] = useState(false);
+  const [justAdded, setJustAdded] = useState<{ wishlistId: string; itemId: string } | null>(null);
+
+  const flagItemAdded = useCallback((wishlistId: string, itemId: string) => {
+    setJustAdded({ wishlistId, itemId });
+  }, []);
+  const clearJustAdded = useCallback(() => setJustAdded(null), []);
 
   // Cloud-sync plumbing: owner key, whether Supabase is configured, and a live
   // ref to the wishlists so mutations can push the affected one after render.
@@ -276,6 +288,9 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         renameWishlist,
         deleteWishlist,
         getWishlist,
+        justAdded,
+        flagItemAdded,
+        clearJustAdded,
       }}
     >
       {children}

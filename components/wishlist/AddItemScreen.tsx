@@ -13,7 +13,8 @@ const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR', 'CAD'];
 export function AddItemScreen() {
   const router = useRouter();
   const params = useSearchParams();
-  const { ready, getWishlist, createWishlist, addItem, updateItem } = useWishlists();
+  const { ready, getWishlist, createWishlist, addItem, updateItem, flagItemAdded } =
+    useWishlists();
 
   // Adding to an existing wishlist (?wishlist=id) or starting one from the draft.
   const existingId = params.get('wishlist');
@@ -143,13 +144,16 @@ export function AddItemScreen() {
 
     if (hasNewImage) uploadInBackground(wishlistId, newItemId, image!);
 
+    // Flag through the store so the detail shows the "New Item added" toast
+    // whether it re-mounts (new wishlist) or is just revealed (modal closed).
+    flagItemAdded(wishlistId, newItemId);
+
     if (existing) {
       // Adding to an existing wishlist: its detail is behind this modal, so
       // just close the modal to reveal it (instant — no navigation/fetch).
       router.back();
     } else {
-      // Brand-new wishlist: open its detail and flag the "New Item added" toast.
-      sessionStorage.setItem('wishpop:justAddedItem', newItemId);
+      // Brand-new wishlist: open its detail.
       router.push(`/wishlists/${wishlistId}`);
     }
   }
