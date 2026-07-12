@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ImagePlus, TriangleAlert, ChevronDown } from 'lucide-react';
 import { useWishlists } from '@/components/product/WishlistStore';
 import { fileToDownscaledDataUrl } from '@/lib/product/image';
@@ -10,11 +10,22 @@ import { uploadImage } from '@/actions/image.actions';
 const DRAFT_TITLE_KEY = 'wishpop:wishlistDraft:title';
 const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR', 'CAD'];
 
+const ITEMS_ROUTE = '/wishlists/new/items';
+
 export function AddItemScreen() {
   const router = useRouter();
   const params = useSearchParams();
+  const pathname = usePathname();
   const { ready, getWishlist, createWishlist, addItem, updateItem, flagItemAdded } =
     useWishlists();
+
+  // This add/edit form is rendered in the intercepting @modal slot. After a
+  // brand-new wishlist's first item is saved we push to its detail, but Next
+  // keeps this slot's instance mounted rather than resolving it to default.tsx.
+  // So drive visibility off the live pathname (not a one-way flag, which would
+  // leave the instance stuck-hidden and blank on the next open) — the modal
+  // shows only while we're on the items route.
+  const onItemsRoute = pathname === ITEMS_ROUTE;
 
   // Adding to an existing wishlist (?wishlist=id) or starting one from the draft.
   const existingId = params.get('wishlist');
@@ -35,6 +46,20 @@ export function AddItemScreen() {
 
   const fileRef = useRef<HTMLInputElement>(null);
   const prefilled = useRef(false);
+
+  // When we navigate away (the slot lingers), clear the form so that if Next
+  // reuses this instance for a later open it starts blank; resetting `prefilled`
+  // lets a subsequent edit re-populate correctly.
+  useEffect(() => {
+    if (onItemsRoute) return;
+    prefilled.current = false;
+    setImage(null);
+    setTitle('');
+    setPrice('');
+    setCurrency('NGN');
+    setLink('');
+    setNotes('');
+  }, [onItemsRoute]);
 
   useEffect(() => {
     if (existing) {
@@ -153,10 +178,18 @@ export function AddItemScreen() {
       // just close the modal to reveal it (instant — no navigation/fetch).
       router.back();
     } else {
-      // Brand-new wishlist: open its detail.
+      // Brand-new wishlist: soft-push to its detail (which renders in the page
+      // slot behind this modal). A soft push keeps the store mounted so the
+      // just-created wishlist's deferred localStorage/cloud writes still land (a
+      // hard reload would race and lose them). Once the pathname changes off the
+      // items route, `onItemsRoute` hides this modal so the detail shows through.
       router.push(`/wishlists/${wishlistId}`);
     }
   }
+
+  // Only render while on the items route; otherwise this lingering slot instance
+  // would cover the page behind it (see onItemsRoute above).
+  if (!onItemsRoute) return null;
 
   return (
     <main className="add-item-screen">
