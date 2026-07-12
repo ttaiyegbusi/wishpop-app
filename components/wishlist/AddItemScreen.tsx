@@ -43,9 +43,17 @@ export function AddItemScreen() {
   const [link, setLink] = useState('');
   const [notes, setNotes] = useState('');
   const [keyboardInset, setKeyboardInset] = useState(0);
+  // True from the first Next tap until the navigation away completes. The
+  // route transition to the new wishlist's detail is network-bound (seconds on
+  // a slow phone), and this form stays on screen the whole time — without the
+  // guard every extra tap re-ran the save and created a duplicate wishlist.
+  const [saving, setSaving] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const prefilled = useRef(false);
+  // Synchronous twin of `saving`: state updates flush async, so two taps in
+  // the same tick could both pass a state-only check.
+  const savingRef = useRef(false);
 
   // When we navigate away (the slot lingers), clear the form so that if Next
   // reuses this instance for a later open it starts blank; resetting `prefilled`
@@ -53,6 +61,8 @@ export function AddItemScreen() {
   useEffect(() => {
     if (onItemsRoute) return;
     prefilled.current = false;
+    savingRef.current = false;
+    setSaving(false);
     setImage(null);
     setTitle('');
     setPrice('');
@@ -132,7 +142,9 @@ export function AddItemScreen() {
   }
 
   function handleNext() {
-    if (!isValid || !ready) return;
+    if (!isValid || !ready || savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
     const hasNewImage = !!image && image.startsWith('data:');
 
     // Editing in place: save and just close the modal — the wishlist's detail
@@ -326,16 +338,18 @@ export function AddItemScreen() {
       </form>
 
       <div className="create-title-actions" style={{ bottom: keyboardInset }}>
-        {/* Gate on store readiness too: handleNext ignores taps until the store
-            has hydrated, so the CTA must not look active before then (otherwise
-            "Next" appears to silently do nothing on slow connections). */}
+        {/* Gate on store readiness and the in-flight save: handleNext ignores
+            taps in both states, so the CTA must not look active (otherwise
+            "Next" appears to silently do nothing on slow connections, and
+            repeat taps while the route transition is pending would duplicate
+            the save). */}
         <button
           type="button"
-          className={`create-title-next ${isValid && ready ? 'is-active' : ''}`}
-          disabled={!isValid || !ready}
+          className={`create-title-next ${isValid && ready && !saving ? 'is-active' : ''}`}
+          disabled={!isValid || !ready || saving}
           onClick={handleNext}
         >
-          {!ready ? 'Loading…' : editItem ? 'Save' : 'Next'}
+          {saving ? 'Saving…' : !ready ? 'Loading…' : editItem ? 'Save' : 'Next'}
         </button>
       </div>
       </div>
