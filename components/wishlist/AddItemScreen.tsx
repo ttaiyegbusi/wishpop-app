@@ -326,13 +326,16 @@ export function AddItemScreen() {
       </form>
 
       <div className="create-title-actions" style={{ bottom: keyboardInset }}>
+        {/* Gate on store readiness too: handleNext ignores taps until the store
+            has hydrated, so the CTA must not look active before then (otherwise
+            "Next" appears to silently do nothing on slow connections). */}
         <button
           type="button"
-          className={`create-title-next ${isValid ? 'is-active' : ''}`}
-          disabled={!isValid}
+          className={`create-title-next ${isValid && ready ? 'is-active' : ''}`}
+          disabled={!isValid || !ready}
           onClick={handleNext}
         >
-          {editItem ? 'Save' : 'Next'}
+          {!ready ? 'Loading…' : editItem ? 'Save' : 'Next'}
         </button>
       </div>
       </div>
