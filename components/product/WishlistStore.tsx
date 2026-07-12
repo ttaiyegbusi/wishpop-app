@@ -10,12 +10,18 @@ import {
   type ReactNode,
 } from 'react';
 import { THEME_COLORS, type ThemeColorId } from '@/lib/product/colors';
-import {
-  backendConfigured,
-  deleteWishlistCloud,
-  fetchOwnerWishlists,
-  pushWishlist,
-} from '@/actions/wishlist.actions';
+
+// Cloud sync goes through /api/sync with plain fetches, NOT server actions:
+// pending server actions serialize with router navigations, so sync calls
+// fired around a save/delete blocked the following navigation for seconds on
+// slow connections (the stuck "Saving…" bug).
+async function syncFetch(op: 'push' | 'delete', ownerKey: string, payload: object): Promise<void> {
+  await fetch('/api/sync', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ op, ownerKey, ...payload }),
+  });
+}
 
 // UI-first client store. Persists to localStorage so the create flow feels
 // real without a backend. Swap for Supabase-backed server actions later.
@@ -47,7 +53,7 @@ export type DraftWishlist = {
 type WishlistStore = {
   ready: boolean;
   wishlists: DraftWishlist[];
-  createWishlist: (input: { title: string; color?: ThemeColorId }) => DraftWishlist;
+  createWishlist: (input: { title: string; color?: ThemeColorId; id?: string }) => DraftWishlist;
   addItem: (wishlistId: string, item: Omit<WishlistItem, 'id'>) => string;
   updateItem: (
     wishlistId: string,
@@ -122,10 +128,21 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       pendingSync.current.delete(id);
       const wl = wishlistsRef.current.find((w) => w.id === id);
       if (!wl) return;
+      // Strip inline base64 images from the push: they're hundreds of KB each
+      // and the same bytes are already travelling via uploadImage, which swaps
+      // in the Storage URL and triggers a (tiny) follow-up push. Sending them
+      // inline too doubled the upload and starved the save-time navigation on
+      // slow connections.
+      const payload: DraftWishlist = {
+        ...wl,
+        items: wl.items.map((it) =>
+          it.imageDataUrl?.startsWith('data:') ? { ...it, imageDataUrl: null } : it,
+        ),
+      };
       const prev = pushChain.current.get(id) ?? Promise.resolve();
       const next = prev
         .catch(() => {})
-        .then(() => pushWishlist(ownerKeyRef.current, wl));
+        .then(() => syncFetch('push', ownerKeyRef.current, { wishlist: payload }));
       pushChain.current.set(id, next);
     }, 0);
   }, []);
@@ -143,12 +160,14 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
     // If the backend is configured, cloud is the source of truth: load the
     // owner's wishlists and replace the local cache. Otherwise stay local-only.
+    // One GET covers both the configured probe and the initial load.
     (async () => {
       try {
-        if (await backendConfigured()) {
+        const res = await fetch(`/api/sync?ownerKey=${encodeURIComponent(ownerKeyRef.current)}`);
+        const json = res.ok ? await res.json() : null;
+        if (json?.configured) {
           cloudRef.current = true;
-          const cloud = await fetchOwnerWishlists(ownerKeyRef.current);
-          if (cloud) setWishlists(cloud);
+          if (json.wishlists) setWishlists(json.wishlists);
         }
       } catch {
         /* offline / not configured — keep the local cache */
@@ -168,9 +187,11 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   }, [wishlists, ready]);
 
   const createWishlist: WishlistStore['createWishlist'] = useCallback(
-    ({ title, color }) => {
+    ({ title, color, id }) => {
       const wishlist: DraftWishlist = {
-        id: newId(),
+        // Callers may pre-generate the id so the detail route can be prefetched
+        // while the user is still filling the form (see AddItemScreen).
+        id: id ?? newId(),
         title: title.trim(),
         // rotate palette so Home cards stay visually varied
         color: color ?? THEME_COLORS[wishlists.length % THEME_COLORS.length].id,
@@ -266,7 +287,8 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   const deleteWishlist: WishlistStore['deleteWishlist'] = useCallback((id) => {
     setWishlists((prev) => prev.filter((w) => w.id !== id));
-    if (cloudRef.current && ownerKeyRef.current) void deleteWishlistCloud(ownerKeyRef.current, id);
+    if (cloudRef.current && ownerKeyRef.current)
+      void syncFetch('delete', ownerKeyRef.current, { id });
   }, []);
 
   const getWishlist = useCallback(

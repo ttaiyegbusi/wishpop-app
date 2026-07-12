@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ImagePlus, TriangleAlert, ChevronDown } from 'lucide-react';
 import { useWishlists } from '@/components/product/WishlistStore';
 import { fileToDownscaledDataUrl } from '@/lib/product/image';
-import { uploadImage } from '@/actions/image.actions';
 
 const DRAFT_TITLE_KEY = 'wishpop:wishlistDraft:title';
 const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR', 'CAD'];
@@ -54,6 +53,22 @@ export function AddItemScreen() {
   // Synchronous twin of `saving`: state updates flush async, so two taps in
   // the same tick could both pass a state-only check.
   const savingRef = useRef(false);
+  // Brand-new path: the wishlist id is generated up front so the detail route
+  // can be prefetched while the user fills the form — otherwise the post-save
+  // router.push pays a full server render (plus cold start) right when the
+  // user is watching "Saving…".
+  const draftWishlistIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (existingId || !onItemsRoute) return;
+    if (!draftWishlistIdRef.current) {
+      draftWishlistIdRef.current =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : String(Date.now()) + Math.random().toString(16).slice(2);
+    }
+    router.prefetch(`/wishlists/${draftWishlistIdRef.current}`);
+  }, [existingId, onItemsRoute, router]);
 
   // When we navigate away (the slot lingers), clear the form so that if Next
   // reuses this instance for a later open it starts blank; resetting `prefilled`
@@ -62,6 +77,9 @@ export function AddItemScreen() {
     if (onItemsRoute) return;
     prefilled.current = false;
     savingRef.current = false;
+    // Next open must mint a fresh id — reusing this one would collide with the
+    // wishlist just created.
+    draftWishlistIdRef.current = null;
     setSaving(false);
     setImage(null);
     setTitle('');
@@ -129,12 +147,23 @@ export function AddItemScreen() {
   }
 
   // Upload a freshly-picked image to Storage in the background and swap the
-  // item's inline data URL for the returned URL. Keeps saving instant — we
-  // don't block navigation on the upload.
+  // item's inline data URL for the returned URL. Uses a plain fetch to the
+  // upload route, NOT a server action: pending server actions serialize with
+  // router navigations, so an action here held the post-save navigation (and
+  // its "Saving…" state) hostage until the whole upload finished. Binary body
+  // is also ~25% smaller than the base64 form.
   function uploadInBackground(wishlistId: string, itemId: string, dataUrl: string) {
-    uploadImage(dataUrl)
-      .then((url) => {
-        if (url) updateItem(wishlistId, itemId, { imageDataUrl: url });
+    const match = dataUrl.match(/^data:(.+?);base64,(.*)$/);
+    if (!match) return;
+    const bytes = Uint8Array.from(atob(match[2]), (c) => c.charCodeAt(0));
+    fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'content-type': match[1] },
+      body: bytes,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json?.ok && json.url) updateItem(wishlistId, itemId, { imageDataUrl: json.url });
       })
       .catch(() => {
         /* keep the inline data URL */
@@ -166,7 +195,12 @@ export function AddItemScreen() {
     let wishlistId = existing?.id;
     if (!wishlistId) {
       const draftTitle = localStorage.getItem(DRAFT_TITLE_KEY) ?? 'New wishlist';
-      wishlistId = createWishlist({ title: draftTitle }).id;
+      // Reuse the prefetched id (see above) so the push below hits the
+      // already-warmed route.
+      wishlistId = createWishlist({
+        title: draftTitle,
+        id: draftWishlistIdRef.current ?? undefined,
+      }).id;
       localStorage.removeItem(DRAFT_TITLE_KEY);
     }
 
