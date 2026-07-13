@@ -78,6 +78,8 @@ export function ItemStoryViewer({
           />
           <div className="item-story-scrim" />
 
+          {item.reservation ? <span className="item-story-reserved">Reserved</span> : null}
+
           <div className="item-story-progress" aria-hidden="true">
             {items.map((it, i) => (
               <span

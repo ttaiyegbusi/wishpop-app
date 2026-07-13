@@ -1560,6 +1560,10 @@ code {
 
 .scatter-card {
   display: block;
+  /* anchor the "Reserved" badge to the card. On mobile the tilt transform
+     happens to create this containing block, but the desktop grid resets the
+     transform, so without this the badge escaped to the page corner. */
+  position: relative;
   flex: 0 0 auto;
   width: 190px;
   height: 246px;
@@ -1772,6 +1776,22 @@ code {
   background: rgba(23, 23, 23, 0.82);
   color: #FFFFFF;
   font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* "Reserved" pill on the full-screen story viewer image (owner sees which of
+   their items a gift-giver has already claimed). */
+.item-story-reserved {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(23, 23, 23, 0.82);
+  color: #FFFFFF;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.01em;
 }

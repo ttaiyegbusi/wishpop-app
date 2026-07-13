@@ -37,8 +37,11 @@ export default function WishlistDetailPage({
   }, [justAdded, wishlistId, clearJustAdded]);
 
   const items = wishlist?.items ?? [];
+  const reservedCount = items.filter((it) => it.reservation).length;
   const subtitle = wishlist
-    ? `${items.length} item${items.length === 1 ? '' : 's'} • ${formatDate(wishlist.createdAt)}`
+    ? `${items.length} item${items.length === 1 ? '' : 's'}` +
+      (reservedCount ? ` • ${reservedCount} reserved` : '') +
+      ` • ${formatDate(wishlist.createdAt)}`
     : '';
 
   async function handleShare() {
