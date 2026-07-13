@@ -35,9 +35,11 @@ function rowToItem(r: ItemRow): WishlistItem {
     currency: r.price_currency ?? 'NGN',
     link: r.link_url ?? '',
     notes: r.notes ?? '',
-    reservation: r.reserver_email
-      ? { email: r.reserver_email, createdAt: Number(r.reserved_at_ms) || 0 }
-      : null,
+    // Never ship the reserver's email to a client: the public share view (and
+    // the owner view) only need to know an item IS reserved, not by whom, and
+    // leaking it would expose every gift-giver's email to anyone with the link.
+    // The email stays in the DB for future server-side use (e.g. notifications).
+    reservation: r.reserver_email ? { email: '', createdAt: Number(r.reserved_at_ms) || 0 } : null,
   };
 }
 

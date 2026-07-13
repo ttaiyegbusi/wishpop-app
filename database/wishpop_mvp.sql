@@ -3,7 +3,13 @@
 --
 -- Ownership is a per-device secret (owner_key) held in the browser; the public
 -- share link is just the wishlist id. All access goes through server actions
--- using the service-role key, so RLS stays off for the MVP.
+-- using the service-role key.
+--
+-- IMPORTANT: enable RLS on both tables with NO policies, so the public anon key
+-- (shipped in the browser bundle) is default-denied and cannot read, insert, or
+-- modify any row directly — only the service-role server actions can. This is
+-- already the case in the live project; the statements below make a fresh
+-- project match it. Do not add anon/authenticated policies without a review.
 
 create table if not exists public.wishlists (
   id            text primary key,               -- client-generated id, also the share token
@@ -30,3 +36,8 @@ create table if not exists public.items (
   created_at     timestamptz not null default now()
 );
 create index if not exists items_wishlist_id_idx on public.items(wishlist_id);
+
+-- Default-deny the public anon key: RLS on, no policies. Only the service-role
+-- server actions (which bypass RLS) can touch these tables.
+alter table public.wishlists enable row level security;
+alter table public.items enable row level security;
