@@ -62,18 +62,16 @@ export async function backendConfigured(): Promise<boolean> {
 export async function fetchOwnerWishlists(ownerKey: string): Promise<DraftWishlist[] | null> {
   const db = createAdminSupabaseClient();
   if (!db) return null;
+  // One round-trip: the items FK lets us embed them per wishlist, instead of a
+  // second query keyed on the returned ids (halves the startup latency).
   const { data: lists } = await db
     .from('wishlists')
-    .select('*')
+    .select('*, items(*)')
     .eq('owner_key', ownerKey)
     .order('created_at_ms', { ascending: false });
   if (!lists) return [];
-  const ids = lists.map((l) => l.id);
-  const { data: items } = ids.length
-    ? await db.from('items').select('*').in('wishlist_id', ids)
-    : { data: [] as ItemRow[] };
-  return (lists as WishlistRow[]).map((w) =>
-    rowToWishlist(w, (items ?? []).filter((it) => it.wishlist_id === w.id)),
+  return (lists as (WishlistRow & { items: ItemRow[] })[]).map((w) =>
+    rowToWishlist(w, w.items ?? []),
   );
 }
 

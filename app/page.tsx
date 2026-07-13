@@ -2,14 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Menu, Plus, Pencil, Share2, Trash2 } from 'lucide-react';
 import { useWishlists, type DraftWishlist } from '@/components/product/WishlistStore';
 import { Toast } from '@/components/ui/Toast';
 
 export default function HomePage() {
   const { ready, wishlists, renameWishlist, deleteWishlist } = useWishlists();
-  const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
   const [menuFor, setMenuFor] = useState<{ id: string; rect: DOMRect } | null>(null);
   const [renaming, setRenaming] = useState<DraftWishlist | null>(null);
@@ -156,7 +154,6 @@ function HomeFolderCard({
   wishlist: DraftWishlist;
   onOpenMenu: (rect: DOMRect) => void;
 }) {
-  const router = useRouter();
   const photos = wishlist.items
     .map((it) => it.imageDataUrl)
     .filter((src): src is string => !!src)
@@ -165,11 +162,12 @@ function HomeFolderCard({
 
   return (
     <div className="hf-card">
-      <button
-        type="button"
+      {/* A Link (not a button) so Next prefetches the detail route as the card
+          scrolls into view — tapping a folder then opens it with no round-trip. */}
+      <Link
+        href={`/wishlists/${wishlist.id}`}
         className="hf-open"
         aria-label={`Open ${wishlist.title}`}
-        onClick={() => router.push(`/wishlists/${wishlist.id}`)}
       >
         <img className="hf-back-img" src="/assets/folder-card-back.svg" alt="" aria-hidden="true" />
         <span className="hf-photos" aria-hidden="true">
@@ -184,7 +182,7 @@ function HomeFolderCard({
             {count} item{count === 1 ? '' : 's'}
           </span>
         </span>
-      </button>
+      </Link>
 
       <button
         type="button"

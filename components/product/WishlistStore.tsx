@@ -23,6 +23,38 @@ async function syncFetch(op: 'push' | 'delete', ownerKey: string, payload: objec
   });
 }
 
+// Merge the cloud snapshot into the current local state at startup. The app is
+// interactive from the local cache immediately (no blocking on the network), so
+// the cloud response can land after the user has already created or edited a
+// wishlist. Cloud is authoritative for anything untouched this session; ids in
+// `dirty` (created/edited/deleted locally in the load window) keep the local
+// version so a slow response can't clobber — or resurrect — them.
+function reconcileWithCloud(
+  cloud: DraftWishlist[],
+  local: DraftWishlist[],
+  dirty: Set<string>,
+): DraftWishlist[] {
+  const localById = new Map(local.map((w) => [w.id, w]));
+  const cloudIds = new Set(cloud.map((w) => w.id));
+  const result: DraftWishlist[] = [];
+
+  for (const cw of cloud) {
+    if (!dirty.has(cw.id)) {
+      result.push(cw);
+      continue;
+    }
+    const lw = localById.get(cw.id);
+    if (lw) result.push(lw); // edited locally this session — local is newer
+    // else: deleted locally this session — drop it
+  }
+  // Keep wishlists created locally this session that the cloud hasn't caught up
+  // to yet (their push may still be in flight).
+  for (const lw of local) {
+    if (!cloudIds.has(lw.id) && dirty.has(lw.id)) result.push(lw);
+  }
+  return result.sort((a, b) => b.createdAt - a.createdAt);
+}
+
 // UI-first client store. Persists to localStorage so the create flow feels
 // real without a backend. Swap for Supabase-backed server actions later.
 
@@ -105,12 +137,14 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   }, []);
   const clearJustAdded = useCallback(() => setJustAdded(null), []);
 
-  // Cloud-sync plumbing: owner key, whether Supabase is configured, and a live
-  // ref to the wishlists so mutations can push the affected one after render.
+  // Cloud-sync plumbing: owner key and a live ref to the wishlists so mutations
+  // can push the affected one after render.
   const ownerKeyRef = useRef('');
-  const cloudRef = useRef(false);
   const wishlistsRef = useRef<DraftWishlist[]>([]);
   const pendingSync = useRef<Set<string>>(new Set());
+  // Ids created/edited/deleted locally before the startup cloud reconcile lands,
+  // so the merge keeps the local version rather than a stale cloud one.
+  const locallyDirtyRef = useRef<Set<string>>(new Set());
   // Per-wishlist promise chain: pushes for the same wishlist run strictly one
   // after another, so an in-flight push can never race a later one and wipe a
   // just-added item (which was losing items on slower networks).
@@ -121,7 +155,11 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   // multiple calls for the same id into one push of the final state, and
   // serialising pushes per wishlist so they never overlap.
   const syncWishlist = useCallback((id: string) => {
-    if (!cloudRef.current || !ownerKeyRef.current) return;
+    // Always attempt the push (no local "is cloud configured" gate): the store
+    // is now interactive before the config probe resolves, and the server
+    // no-ops the push when the backend isn't configured. This is what lets a
+    // wishlist created in the first second still reach the cloud.
+    if (!ownerKeyRef.current) return;
     if (pendingSync.current.has(id)) return;
     pendingSync.current.add(id);
     setTimeout(() => {
@@ -157,22 +195,24 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       /* ignore corrupt storage */
     }
     setWishlists(cached);
+    // Local-first: the app is usable from the cache immediately — no blocking
+    // on the network round-trip (which was the multi-second "Loading…" gate).
+    setReady(true);
 
-    // If the backend is configured, cloud is the source of truth: load the
-    // owner's wishlists and replace the local cache. Otherwise stay local-only.
-    // One GET covers both the configured probe and the initial load.
+    // Reconcile with the cloud in the background and merge (not replace), so a
+    // slow response can't wipe work done in the load window. One GET covers the
+    // configured probe and the initial load.
     (async () => {
       try {
         const res = await fetch(`/api/sync?ownerKey=${encodeURIComponent(ownerKeyRef.current)}`);
         const json = res.ok ? await res.json() : null;
-        if (json?.configured) {
-          cloudRef.current = true;
-          if (json.wishlists) setWishlists(json.wishlists);
+        if (json?.configured && json.wishlists) {
+          setWishlists((local) =>
+            reconcileWithCloud(json.wishlists, local, locallyDirtyRef.current),
+          );
         }
       } catch {
         /* offline / not configured — keep the local cache */
-      } finally {
-        setReady(true);
       }
     })();
   }, []);
@@ -198,6 +238,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         items: [],
         createdAt: Date.now(),
       };
+      locallyDirtyRef.current.add(wishlist.id);
       setWishlists((prev) => [wishlist, ...prev]);
       syncWishlist(wishlist.id);
       return wishlist;
@@ -208,6 +249,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const addItem: WishlistStore['addItem'] = useCallback(
     (wishlistId, item) => {
       const id = newId();
+      locallyDirtyRef.current.add(wishlistId);
       setWishlists((prev) =>
         prev.map((w) =>
           w.id === wishlistId ? { ...w, items: [...w.items, { ...item, id }] } : w,
@@ -221,6 +263,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   const updateItem: WishlistStore['updateItem'] = useCallback(
     (wishlistId, itemId, patch) => {
+      locallyDirtyRef.current.add(wishlistId);
       setWishlists((prev) =>
         prev.map((w) =>
           w.id === wishlistId
@@ -235,6 +278,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   const deleteItem: WishlistStore['deleteItem'] = useCallback(
     (wishlistId, itemId) => {
+      locallyDirtyRef.current.add(wishlistId);
       setWishlists((prev) =>
         prev.map((w) =>
           w.id === wishlistId ? { ...w, items: w.items.filter((it) => it.id !== itemId) } : w,
@@ -279,6 +323,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     (id, title) => {
       const next = title.trim();
       if (!next) return;
+      locallyDirtyRef.current.add(id);
       setWishlists((prev) => prev.map((w) => (w.id === id ? { ...w, title: next } : w)));
       syncWishlist(id);
     },
@@ -286,9 +331,9 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   );
 
   const deleteWishlist: WishlistStore['deleteWishlist'] = useCallback((id) => {
+    locallyDirtyRef.current.add(id);
     setWishlists((prev) => prev.filter((w) => w.id !== id));
-    if (cloudRef.current && ownerKeyRef.current)
-      void syncFetch('delete', ownerKeyRef.current, { id });
+    if (ownerKeyRef.current) void syncFetch('delete', ownerKeyRef.current, { id });
   }, []);
 
   const getWishlist = useCallback(
