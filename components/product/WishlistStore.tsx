@@ -185,6 +185,29 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     }, 0);
   }, []);
 
+  // Pull the latest cloud state and merge it in (not replace), so a slow
+  // response can't wipe work done meanwhile. Reused for the initial load and for
+  // refreshing when the page regains focus (picks up reservations and any
+  // cross-device edits). Throttled so focus + visibilitychange don't double-fire.
+  const lastSyncRef = useRef(0);
+  const syncFromCloud = useCallback(async () => {
+    if (!ownerKeyRef.current) return;
+    const now = Date.now();
+    if (now - lastSyncRef.current < 2000) return;
+    lastSyncRef.current = now;
+    try {
+      const res = await fetch(`/api/sync?ownerKey=${encodeURIComponent(ownerKeyRef.current)}`);
+      const json = res.ok ? await res.json() : null;
+      if (json?.configured && json.wishlists) {
+        setWishlists((local) =>
+          reconcileWithCloud(json.wishlists, local, locallyDirtyRef.current),
+        );
+      }
+    } catch {
+      /* offline / not configured — keep the local cache */
+    }
+  }, []);
+
   useEffect(() => {
     ownerKeyRef.current = getOwnerKey();
     let cached: DraftWishlist[] = [];
@@ -198,24 +221,22 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     // Local-first: the app is usable from the cache immediately — no blocking
     // on the network round-trip (which was the multi-second "Loading…" gate).
     setReady(true);
+    void syncFromCloud();
+  }, [syncFromCloud]);
 
-    // Reconcile with the cloud in the background and merge (not replace), so a
-    // slow response can't wipe work done in the load window. One GET covers the
-    // configured probe and the initial load.
-    (async () => {
-      try {
-        const res = await fetch(`/api/sync?ownerKey=${encodeURIComponent(ownerKeyRef.current)}`);
-        const json = res.ok ? await res.json() : null;
-        if (json?.configured && json.wishlists) {
-          setWishlists((local) =>
-            reconcileWithCloud(json.wishlists, local, locallyDirtyRef.current),
-          );
-        }
-      } catch {
-        /* offline / not configured — keep the local cache */
-      }
-    })();
-  }, []);
+  // Refresh from the cloud when the user comes back to the tab/app, so a
+  // reservation (or a change from another device) shows up without a reload.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void syncFromCloud();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [syncFromCloud]);
 
   useEffect(() => {
     if (!ready) return;
