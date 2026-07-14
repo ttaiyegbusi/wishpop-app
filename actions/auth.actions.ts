@@ -23,3 +23,18 @@ export async function claimDeviceWishlists(ownerKey: string): Promise<number> {
     .select('id');
   return data?.length ?? 0;
 }
+
+/**
+ * Permanently delete the signed-in account and everything it owns. The user's
+ * wishlists (and their items) cascade via the wishlists.user_id foreign key.
+ * The caller must sign out afterwards to clear the now-orphaned session.
+ * Returns whether the account was deleted.
+ */
+export async function deleteAccount(): Promise<boolean> {
+  const userId = await getSessionUserId();
+  if (!userId) return false;
+  const db = createAdminSupabaseClient();
+  if (!db) return false;
+  const { error } = await db.auth.admin.deleteUser(userId);
+  return !error;
+}

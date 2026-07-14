@@ -1452,6 +1452,21 @@ code {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.account-email {
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #171717;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* stack the account actions so "Delete account" isn't cramped next to Sign out */
+.folder-modal-actions.account-actions {
+  flex-direction: column-reverse;
+  align-items: stretch;
+  gap: 10px;
+}
 .folder-modal-input {
   margin-top: 16px;
   width: 100%;
