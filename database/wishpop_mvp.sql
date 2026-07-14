@@ -13,13 +13,15 @@
 
 create table if not exists public.wishlists (
   id            text primary key,               -- client-generated id, also the share token
-  owner_key     text not null,                  -- per-device secret: proves ownership
+  owner_key     text not null,                  -- per-device secret: proves ownership (anonymous)
+  user_id       uuid references auth.users(id) on delete cascade, -- set once claimed by an account
   title         text not null default '',
   color         text,
   created_at_ms bigint not null,                -- mirrors the client createdAt (epoch ms)
   created_at    timestamptz not null default now()
 );
 create index if not exists wishlists_owner_key_idx on public.wishlists(owner_key);
+create index if not exists wishlists_user_id_idx on public.wishlists(user_id);
 
 create table if not exists public.items (
   id             text primary key,              -- client-generated id
