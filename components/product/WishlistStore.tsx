@@ -10,6 +10,8 @@ import {
   type ReactNode,
 } from 'react';
 import { THEME_COLORS, type ThemeColorId } from '@/lib/product/colors';
+import { getBrowserSupabaseClient } from '@/lib/supabase/browser';
+import { claimDeviceWishlists } from '@/actions/auth.actions';
 
 // Cloud sync goes through /api/sync with plain fetches, NOT server actions:
 // pending server actions serialize with router navigations, so sync calls
@@ -236,6 +238,29 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
     };
+  }, [syncFromCloud]);
+
+  // React to auth: on sign-in, fold this device's anonymous lists into the
+  // account, then reload the account's lists (which now follow the user across
+  // devices). On sign-out, reload — the server falls back to this device's
+  // anonymous lists. Bypass the throttle so these fire immediately.
+  useEffect(() => {
+    const supabase = getBrowserSupabaseClient();
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === 'SIGNED_IN') {
+        try {
+          await claimDeviceWishlists(ownerKeyRef.current);
+        } catch {
+          /* claim is best-effort; the reload below still shows the account */
+        }
+        lastSyncRef.current = 0;
+        void syncFromCloud();
+      } else if (event === 'SIGNED_OUT') {
+        lastSyncRef.current = 0;
+        void syncFromCloud();
+      }
+    });
+    return () => sub.subscription.unsubscribe();
   }, [syncFromCloud]);
 
   useEffect(() => {

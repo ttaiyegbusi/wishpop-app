@@ -21,6 +21,7 @@ type ItemRow = {
 type WishlistRow = {
   id: string;
   owner_key: string;
+  user_id: string | null;
   title: string;
   color: string | null;
   created_at_ms: number;
@@ -62,6 +63,18 @@ export async function backendConfigured(): Promise<boolean> {
 
 /** All wishlists (with items) owned by this device. Null when not configured. */
 export async function fetchOwnerWishlists(ownerKey: string): Promise<DraftWishlist[] | null> {
+  return fetchWishlistsBy('owner_key', ownerKey);
+}
+
+/** All wishlists (with items) belonging to an account, across devices. */
+export async function fetchUserWishlists(userId: string): Promise<DraftWishlist[] | null> {
+  return fetchWishlistsBy('user_id', userId);
+}
+
+async function fetchWishlistsBy(
+  column: 'owner_key' | 'user_id',
+  value: string,
+): Promise<DraftWishlist[] | null> {
   const db = createAdminSupabaseClient();
   if (!db) return null;
   // One round-trip: the items FK lets us embed them per wishlist, instead of a
@@ -69,7 +82,7 @@ export async function fetchOwnerWishlists(ownerKey: string): Promise<DraftWishli
   const { data: lists } = await db
     .from('wishlists')
     .select('*, items(*)')
-    .eq('owner_key', ownerKey)
+    .eq(column, value)
     .order('created_at_ms', { ascending: false });
   if (!lists) return [];
   return (lists as (WishlistRow & { items: ItemRow[] })[]).map((w) =>
@@ -88,25 +101,40 @@ export async function fetchPublicWishlist(shareToken: string): Promise<DraftWish
 }
 
 /**
- * Mirror an owner's wishlist to the cloud. Upserts the wishlist and its items
- * (owner fields only — reservation fields are left untouched) and removes items
- * the owner has deleted. No-ops when the backend isn't configured.
+ * Mirror a wishlist to the cloud. Upserts the wishlist and its items (owner
+ * fields only — reservation fields are left untouched) and removes items the
+ * owner has deleted. `userId` is the signed-in account (from the session) or
+ * null for anonymous. No-ops when the backend isn't configured.
  */
-export async function pushWishlist(ownerKey: string, wishlist: DraftWishlist): Promise<void> {
+export async function pushWishlist(
+  ownerKey: string,
+  wishlist: DraftWishlist,
+  userId: string | null = null,
+): Promise<void> {
   const db = createAdminSupabaseClient();
   if (!db) return;
 
-  // Guard: never let a different device overwrite someone else's wishlist.
+  // Guard: don't let anyone overwrite a wishlist they don't own. An account
+  // owns rows by user_id; an anonymous device owns rows by owner_key.
   const { data: existing } = await db
     .from('wishlists')
-    .select('owner_key')
+    .select('owner_key, user_id')
     .eq('id', wishlist.id)
     .maybeSingle();
-  if (existing && existing.owner_key !== ownerKey) return;
+  if (existing) {
+    if (existing.user_id) {
+      if (existing.user_id !== userId) return; // owned by an account, not this caller
+    } else if (existing.owner_key !== ownerKey) {
+      return; // anonymous list from a different device
+    }
+  }
 
   await db.from('wishlists').upsert({
     id: wishlist.id,
     owner_key: ownerKey,
+    // Keep an existing account owner; otherwise stamp the caller's account (if
+    // signed in). Anonymous pushes leave it null.
+    user_id: existing?.user_id ?? userId,
     title: wishlist.title,
     color: wishlist.color,
     created_at_ms: wishlist.createdAt,
@@ -134,9 +162,14 @@ export async function pushWishlist(ownerKey: string, wishlist: DraftWishlist): P
   await del;
 }
 
-/** Delete a wishlist from the cloud (owner only). */
-export async function deleteWishlistCloud(ownerKey: string, id: string): Promise<void> {
+/** Delete a wishlist from the cloud (owner only — by account if signed in, else device). */
+export async function deleteWishlistCloud(
+  ownerKey: string,
+  id: string,
+  userId: string | null = null,
+): Promise<void> {
   const db = createAdminSupabaseClient();
   if (!db) return;
-  await db.from('wishlists').delete().eq('id', id).eq('owner_key', ownerKey);
+  const q = db.from('wishlists').delete().eq('id', id);
+  await (userId ? q.eq('user_id', userId) : q.eq('owner_key', ownerKey));
 }

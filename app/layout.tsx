@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { Analytics } from '@vercel/analytics/next';
+import { AuthProvider } from '@/components/product/AuthProvider';
 import { WishlistProvider } from '@/components/product/WishlistStore';
 import './globals.css';
 
@@ -54,12 +55,14 @@ export default function RootLayout({
         {/* the whole app is the product: store + mobile-first phone frame.
             `modal` is the intercepting-route slot (create / add-item) that
             overlays the current page. */}
-        <WishlistProvider>
-          <div className="app-frame">
-            {children}
-            {modal}
-          </div>
-        </WishlistProvider>
+        <AuthProvider>
+          <WishlistProvider>
+            <div className="app-frame">
+              {children}
+              {modal}
+            </div>
+          </WishlistProvider>
+        </AuthProvider>
         <Analytics />
       </body>
     </html>

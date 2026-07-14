@@ -3,8 +3,10 @@ import {
   backendConfigured,
   deleteWishlistCloud,
   fetchOwnerWishlists,
+  fetchUserWishlists,
   pushWishlist,
 } from '@/actions/wishlist.actions';
+import { getSessionUserId } from '@/lib/supabase/server';
 import type { DraftWishlist } from '@/components/product/WishlistStore';
 
 // Cloud-sync endpoints as route handlers rather than server actions on
@@ -20,7 +22,13 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: 'ownerKey required' }, { status: 400 });
   }
   const configured = await backendConfigured();
-  const wishlists = configured ? await fetchOwnerWishlists(ownerKey) : null;
+  // Signed in → the account's lists (across devices); anonymous → this device's.
+  const userId = await getSessionUserId();
+  const wishlists = configured
+    ? userId
+      ? await fetchUserWishlists(userId)
+      : await fetchOwnerWishlists(ownerKey)
+    : null;
   return NextResponse.json({ ok: true, configured, wishlists });
 }
 
@@ -36,12 +44,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'ownerKey required' }, { status: 400 });
   }
 
+  // The account (if any) comes from the verified session cookie, never the
+  // client body — so a caller can't claim to be someone else.
+  const userId = await getSessionUserId();
+
   if (op === 'push' && body.wishlist?.id) {
-    await pushWishlist(ownerKey, body.wishlist);
+    await pushWishlist(ownerKey, body.wishlist, userId);
     return NextResponse.json({ ok: true });
   }
   if (op === 'delete' && body.id) {
-    await deleteWishlistCloud(ownerKey, body.id);
+    await deleteWishlistCloud(ownerKey, body.id, userId);
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });

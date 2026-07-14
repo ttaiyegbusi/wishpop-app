@@ -4,11 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Menu, Plus, Pencil, Share2, Trash2 } from 'lucide-react';
 import { useWishlists, type DraftWishlist } from '@/components/product/WishlistStore';
+import { useAuth } from '@/components/product/AuthProvider';
+import { SignInModal } from '@/components/product/SignInModal';
 import { Toast } from '@/components/ui/Toast';
 
 export default function HomePage() {
   const { ready, wishlists, renameWishlist, deleteWishlist } = useWishlists();
+  const { user, signOut } = useAuth();
   const [navOpen, setNavOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
   const [menuFor, setMenuFor] = useState<{ id: string; rect: DOMRect } | null>(null);
   const [renaming, setRenaming] = useState<DraftWishlist | null>(null);
   const [deleting, setDeleting] = useState<DraftWishlist | null>(null);
@@ -110,13 +114,25 @@ export default function HomePage() {
 
       {navOpen ? (
         <NavMenu
+          email={user?.email ?? null}
           onClose={() => setNavOpen(false)}
+          onSignIn={() => {
+            setNavOpen(false);
+            setSignInOpen(true);
+          }}
+          onSignOut={async () => {
+            setNavOpen(false);
+            await signOut();
+            setToast('Signed out');
+          }}
           onPick={(label) => {
             setNavOpen(false);
             setToast(`${label} — coming soon`);
           }}
         />
       ) : null}
+
+      {signInOpen ? <SignInModal onClose={() => setSignInOpen(false)} /> : null}
 
       {renaming ? (
         <RenameModal
@@ -251,7 +267,19 @@ function CardMenu({
   );
 }
 
-function NavMenu({ onClose, onPick }: { onClose: () => void; onPick: (label: string) => void }) {
+function NavMenu({
+  email,
+  onClose,
+  onSignIn,
+  onSignOut,
+  onPick,
+}: {
+  email: string | null;
+  onClose: () => void;
+  onSignIn: () => void;
+  onSignOut: () => void;
+  onPick: (label: string) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -262,11 +290,20 @@ function NavMenu({ onClose, onPick }: { onClose: () => void; onPick: (label: str
   }, [onClose]);
   return (
     <div className="folder-menu home-nav-menu" role="menu" ref={ref}>
-      {['Sign up', 'Account', 'How it works', 'Sign out'].map((label) => (
-        <button key={label} className="folder-menu-item" role="menuitem" onClick={() => onPick(label)}>
-          {label}
+      {email ? <p className="home-nav-email" title={email}>{email}</p> : null}
+      {email ? null : (
+        <button className="folder-menu-item" role="menuitem" onClick={onSignIn}>
+          Sign in / Sign up
         </button>
-      ))}
+      )}
+      <button className="folder-menu-item" role="menuitem" onClick={() => onPick('How it works')}>
+        How it works
+      </button>
+      {email ? (
+        <button className="folder-menu-item is-danger" role="menuitem" onClick={onSignOut}>
+          Sign out
+        </button>
+      ) : null}
     </div>
   );
 }
