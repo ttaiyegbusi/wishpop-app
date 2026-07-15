@@ -129,7 +129,13 @@ export async function pushWishlist(
     }
   }
 
-  await db.from('wishlists').upsert({
+  // Every write below is checked for an error and thrown: previously none of
+  // them were, so a failed upsert (e.g. a schema mismatch) still returned
+  // ok:true to the client, which then marked the wishlist "synced" even
+  // though nothing was actually written — a silent, permanent data-loss path
+  // with no way to detect or retry it. Throwing lets /api/sync report failure
+  // so the client's unsynced-retry logic (see WishlistStore) actually fires.
+  const { error: wishlistErr } = await db.from('wishlists').upsert({
     id: wishlist.id,
     owner_key: ownerKey,
     // Keep an existing account owner; otherwise stamp the caller's account (if
@@ -139,9 +145,10 @@ export async function pushWishlist(
     color: wishlist.color,
     created_at_ms: wishlist.createdAt,
   });
+  if (wishlistErr) throw new Error(`pushWishlist upsert failed: ${wishlistErr.message}`);
 
   if (wishlist.items.length) {
-    await db.from('items').upsert(
+    const { error: itemsErr } = await db.from('items').upsert(
       wishlist.items.map((it, i) => ({
         id: it.id,
         wishlist_id: wishlist.id,
@@ -154,12 +161,14 @@ export async function pushWishlist(
         sort_order: i,
       })),
     );
+    if (itemsErr) throw new Error(`pushWishlist items upsert failed: ${itemsErr.message}`);
   }
 
   const keepIds = wishlist.items.map((it) => it.id);
   let del = db.from('items').delete().eq('wishlist_id', wishlist.id);
   if (keepIds.length) del = del.not('id', 'in', `(${keepIds.join(',')})`);
-  await del;
+  const { error: delErr } = await del;
+  if (delErr) throw new Error(`pushWishlist item cleanup failed: ${delErr.message}`);
 }
 
 /** Delete a wishlist from the cloud (owner only — by account if signed in, else device). */
@@ -171,5 +180,6 @@ export async function deleteWishlistCloud(
   const db = createAdminSupabaseClient();
   if (!db) return;
   const q = db.from('wishlists').delete().eq('id', id);
-  await (userId ? q.eq('user_id', userId) : q.eq('owner_key', ownerKey));
+  const { error } = await (userId ? q.eq('user_id', userId) : q.eq('owner_key', ownerKey));
+  if (error) throw new Error(`deleteWishlistCloud failed: ${error.message}`);
 }

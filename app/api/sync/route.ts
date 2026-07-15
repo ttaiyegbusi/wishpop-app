@@ -48,13 +48,24 @@ export async function POST(req: Request) {
   // client body — so a caller can't claim to be someone else.
   const userId = await getSessionUserId();
 
-  if (op === 'push' && body.wishlist?.id) {
-    await pushWishlist(ownerKey, body.wishlist, userId);
-    return NextResponse.json({ ok: true });
-  }
-  if (op === 'delete' && body.id) {
-    await deleteWishlistCloud(ownerKey, body.id, userId);
-    return NextResponse.json({ ok: true });
+  // pushWishlist/deleteWishlistCloud now throw on a Supabase error instead of
+  // swallowing it — previously a failed write (e.g. a schema mismatch) still
+  // returned ok:true here, so the client marked the wishlist "synced" when
+  // nothing had actually been written, with no way to detect or retry it. A
+  // non-2xx response makes the client's syncFetch (res.ok) see the failure and
+  // keep the wishlist queued for retry on the next visit/focus.
+  try {
+    if (op === 'push' && body.wishlist?.id) {
+      await pushWishlist(ownerKey, body.wishlist, userId);
+      return NextResponse.json({ ok: true });
+    }
+    if (op === 'delete' && body.id) {
+      await deleteWishlistCloud(ownerKey, body.id, userId);
+      return NextResponse.json({ ok: true });
+    }
+  } catch (err) {
+    console.error('[/api/sync]', err);
+    return NextResponse.json({ ok: false, error: 'Sync failed' }, { status: 500 });
   }
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
 }
