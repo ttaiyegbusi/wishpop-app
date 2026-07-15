@@ -17,12 +17,44 @@ import { claimDeviceWishlists } from '@/actions/auth.actions';
 // pending server actions serialize with router navigations, so sync calls
 // fired around a save/delete blocked the following navigation for seconds on
 // slow connections (the stuck "Saving…" bug).
-async function syncFetch(op: 'push' | 'delete', ownerKey: string, payload: object): Promise<void> {
-  await fetch('/api/sync', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ op, ownerKey, ...payload }),
-  });
+// Returns whether the request actually reached the server successfully — a
+// wishlist that silently fails to push here would otherwise exist forever in
+// the user's local cache but never in the database, so its share link would
+// 404 for everyone else with no indication anything was wrong.
+async function syncFetch(
+  op: 'push' | 'delete',
+  ownerKey: string,
+  payload: object,
+): Promise<boolean> {
+  try {
+    const res = await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ op, ownerKey, ...payload }),
+    });
+    return res.ok;
+  } catch {
+    return false; // offline / network error
+  }
+}
+
+const UNSYNCED_KEY = 'wishpop.unsynced.v1';
+
+function loadUnsyncedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(UNSYNCED_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveUnsyncedIds(ids: Set<string>) {
+  try {
+    localStorage.setItem(UNSYNCED_KEY, JSON.stringify([...ids]));
+  } catch {
+    /* ignore quota errors */
+  }
 }
 
 // Merge the cloud snapshot into the current local state at startup. The app is
@@ -151,6 +183,17 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   // after another, so an in-flight push can never race a later one and wipe a
   // just-added item (which was losing items on slower networks).
   const pushChain = useRef<Map<string, Promise<void>>>(new Map());
+  // Ids with a push that hasn't been confirmed to reach the server yet.
+  // Persisted so a wishlist that fails to sync (flaky network, backgrounded
+  // app right after creating it) isn't silently lost forever — it gets retried
+  // on the next visit/focus instead of sitting in local storage indefinitely
+  // while its share link 404s for everyone else. Loaded lazily on first use
+  // since localStorage isn't available during SSR.
+  const unsyncedRef = useRef<Set<string> | null>(null);
+  function unsyncedIds() {
+    if (!unsyncedRef.current) unsyncedRef.current = loadUnsyncedIds();
+    return unsyncedRef.current;
+  }
   wishlistsRef.current = wishlists;
 
   // Push a wishlist to the cloud after the current render commits, coalescing
@@ -162,6 +205,9 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     // no-ops the push when the backend isn't configured. This is what lets a
     // wishlist created in the first second still reach the cloud.
     if (!ownerKeyRef.current) return;
+    const unsynced = unsyncedIds();
+    unsynced.add(id);
+    saveUnsyncedIds(unsynced);
     if (pendingSync.current.has(id)) return;
     pendingSync.current.add(id);
     setTimeout(() => {
@@ -182,10 +228,33 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       const prev = pushChain.current.get(id) ?? Promise.resolve();
       const next = prev
         .catch(() => {})
-        .then(() => syncFetch('push', ownerKeyRef.current, { wishlist: payload }));
+        .then(() => syncFetch('push', ownerKeyRef.current, { wishlist: payload }))
+        .then((ok) => {
+          // Only clear the retry flag on confirmed success — a failed or
+          // offline push leaves it marked so the next visit/focus retries it.
+          if (!ok) return;
+          const current = unsyncedIds();
+          if (current.delete(id)) saveUnsyncedIds(current);
+        });
       pushChain.current.set(id, next);
     }, 0);
   }, []);
+
+  // Re-attempt any pushes that never got a confirmed success — e.g. the app
+  // was backgrounded or lost signal right after creating a wishlist. Safe to
+  // call anytime: syncWishlist no-ops a wishlist that's already mid-push, and
+  // a wishlist that did succeed was already cleared from the set.
+  const retryUnsyncedPushes = useCallback(() => {
+    for (const id of unsyncedIds()) {
+      if (wishlistsRef.current.some((w) => w.id === id)) syncWishlist(id);
+      else {
+        // Was deleted locally before ever reaching the cloud — nothing to retry.
+        const current = unsyncedIds();
+        current.delete(id);
+        saveUnsyncedIds(current);
+      }
+    }
+  }, [syncWishlist]);
 
   // Pull the latest cloud state and merge it in (not replace), so a slow
   // response can't wipe work done meanwhile. Reused for the initial load and for
@@ -224,13 +293,24 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     // on the network round-trip (which was the multi-second "Loading…" gate).
     setReady(true);
     void syncFromCloud();
-  }, [syncFromCloud]);
+    // Deferred to a macrotask so it runs after the setWishlists(cached) render
+    // commits — wishlistsRef.current still holds the pre-mount (empty) value
+    // synchronously here, which would make retryUnsyncedPushes wrongly treat
+    // every pending id as deleted.
+    setTimeout(() => retryUnsyncedPushes(), 0);
+  }, [syncFromCloud, retryUnsyncedPushes]);
 
   // Refresh from the cloud when the user comes back to the tab/app, so a
   // reservation (or a change from another device) shows up without a reload.
+  // Also retry any wishlist that never confirmed reaching the cloud (e.g. the
+  // app lost signal or was closed right after it was created) — otherwise it
+  // stays a local-only "phantom" whose share link 404s forever.
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void syncFromCloud();
+      if (document.visibilityState === 'visible') {
+        void syncFromCloud();
+        retryUnsyncedPushes();
+      }
     };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onVisible);
@@ -238,7 +318,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
     };
-  }, [syncFromCloud]);
+  }, [syncFromCloud, retryUnsyncedPushes]);
 
   // React to auth: on sign-in, fold this device's anonymous lists into the
   // account, then reload the account's lists (which now follow the user across
